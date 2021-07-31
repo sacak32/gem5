@@ -60,6 +60,7 @@
 #include "debug/Quiesce.hh"
 #include "debug/WorkItems.hh"
 #include "dev/net/dist_iface.hh"
+#include "mem/cache/prefetch/bfs.hh"
 #include "params/BaseCPU.hh"
 #include "sim/process.hh"
 #include "sim/serialize.hh"
@@ -97,6 +98,14 @@ const std::string DIST_RANK = "dist-rank";
 const std::string DIST_SIZE = "dist-size";
 
 } // namespace InitParamKey
+
+void
+setupprefetcher(ThreadContext *tc,
+                uint64_t id, uint64_t start,
+                uint64_t end, uint64_t element_size)
+{
+    Prefetcher::BFS::setup(id, start, end, element_size);
+}
 
 void
 arm(ThreadContext *tc)

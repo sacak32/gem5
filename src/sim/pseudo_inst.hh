@@ -62,6 +62,9 @@ decodeAddrOffset(Addr offset, uint8_t &func)
     func = bits(offset, 15, 8);
 }
 
+void setupprefetcher(ThreadContext *tc,
+                     uint64_t id, uint64_t start,
+                     uint64_t end, uint64_t element_size);
 void arm(ThreadContext *tc);
 void quiesce(ThreadContext *tc);
 void quiesceSkip(ThreadContext *tc);
@@ -211,7 +214,10 @@ pseudoInstWork(ThreadContext *tc, uint8_t func, uint64_t &result)
         invokeSimcall<ABI>(tc, workend);
         return true;
 
-      case M5OP_RESERVED1:
+      case M5OP_SETUP_PREFETCHER:
+        invokeSimcall<ABI>(tc, setupprefetcher);
+        return true;
+
       case M5OP_RESERVED2:
       case M5OP_RESERVED3:
       case M5OP_RESERVED4:

@@ -148,6 +148,13 @@ class StridePrefetcherHashedSetAssociative(SetAssociative):
     cxx_class = 'Prefetcher::StridePrefetcherHashedSetAssociative'
     cxx_header = "mem/cache/prefetch/stride.hh"
 
+class BFSPrefetcher(QueuedPrefetcher):
+    type = 'BFSPrefetcher'
+    cxx_class = 'Prefetcher::BFS'
+    cxx_header = "mem/cache/prefetch/bfs.hh"
+
+    use_virtual_addresses = True
+
 class StridePrefetcher(QueuedPrefetcher):
     type = 'StridePrefetcher'
     cxx_class = 'Prefetcher::Stride'
