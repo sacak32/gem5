@@ -133,6 +133,9 @@ def config_cache(options, system):
             icache = icache_class(**_get_cache_opts('l1i', options))
             dcache = dcache_class(**_get_cache_opts('l1d', options))
 
+            # If we have a data prefetcher, connect TLB
+            if dcache.prefetcher:
+                dcache.prefetcher.registerTLB(system.cpu[i].mmu.dtb)
             # If we have a walker cache specified, instantiate two
             # instances here
             if walk_cache_class:
