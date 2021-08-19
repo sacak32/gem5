@@ -52,6 +52,7 @@
 #include "debug/CachePort.hh"
 #include "debug/CacheRepl.hh"
 #include "debug/CacheVerbose.hh"
+#include "debug/HWPrefetch.hh"
 #include "mem/cache/compressors/base.hh"
 #include "mem/cache/mshr.hh"
 #include "mem/cache/prefetch/base.hh"
@@ -525,7 +526,7 @@ BaseCache::recvTimingResp(PacketPtr pkt)
 
         // Request the bus for a prefetch if this deallocation freed enough
         // MSHRs for a prefetch to take place
-        if (prefetcher && mshrQueue.canPrefetch() && !isBlocked()) {
+        if (prefetcher && !mshrQueue.isNearlyFull() && !isBlocked()) {
             Tick next_pf_time = std::max(prefetcher->nextPrefetchReadyTime(),
                                          clockEdge());
             if (next_pf_time != MaxTick)
@@ -813,10 +814,10 @@ BaseCache::getNextQueueEntry()
 
     // fall through... no pending requests.  Try a prefetch.
     assert(!miss_mshr && !wq_entry);
-    if (prefetcher && mshrQueue.canPrefetch() && !isBlocked()) {
+    if (prefetcher && !mshrQueue.isNearlyFull() && !isBlocked()) {
         // If we have a miss queue slot, we can try a prefetch
         PacketPtr pkt = prefetcher->getPacket();
-        if (pkt) {
+        while (pkt) {
             Addr pf_addr = pkt->getBlockAddr(blkSize);
             if (!tags->findBlock(pf_addr, pkt->isSecure()) &&
                 !mshrQueue.findMatch(pf_addr, pkt->isSecure()) &&
@@ -830,9 +831,20 @@ BaseCache::getNextQueueEntry()
                 // that we send the packet straight away, so do not
                 // schedule the send
                 return allocateMissBuffer(pkt, curTick(), false);
+            } else if(prefetcher->feedbackLoop && tags->findBlock(pf_addr, pkt->isSecure())) {
+                DPRINTF(HWPrefetch, "Feedback Loop happening!\n");
+                CacheBlk *blk= tags->findBlock(pf_addr, pkt->isSecure());
+                pkt->setDataFromBlock(blk->data, blkSize);
+                
+                prefetcher->notifyFill(pkt);
+                delete pkt;
+            
+                pkt = prefetcher->getPacket();
+            
             } else {
                 // free the request and packet
                 delete pkt;
+                pkt = nullptr;
             }
         }
     }
@@ -1758,7 +1770,7 @@ BaseCache::nextQueueReadyTime() const
 
     // Don't signal prefetch ready time if no MSHRs available
     // Will signal once enoguh MSHRs are deallocated
-    if (prefetcher && mshrQueue.canPrefetch() && !isBlocked()) {
+    if (prefetcher && !mshrQueue.isNearlyFull() && !isBlocked()) {
         nextReady = std::min(nextReady,
                              prefetcher->nextPrefetchReadyTime());
     }

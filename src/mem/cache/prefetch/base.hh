@@ -289,7 +289,7 @@ class Base : public ClockedObject
 
     /** Use Virtual Addresses for prefetching */
     const bool useVirtualAddresses;
-
+    
     /**
      * Determine if this access should be observed
      * @param pkt The memory request causing the event
@@ -332,6 +332,9 @@ class Base : public ClockedObject
     BaseTLB * tlb;
 
   public:
+    /** If data in cache, give back to prefetcher */
+    const bool feedbackLoop;
+
     Base(const BasePrefetcherParams &p);
     virtual ~Base() = default;
 

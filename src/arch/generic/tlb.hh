@@ -92,6 +92,9 @@ class BaseTLB : public SimObject
     virtual void translateTiming(
             const RequestPtr &req, ThreadContext *tc,
             Translation *translation, Mode mode) = 0;
+
+    virtual bool
+    translateFunctional(ThreadContext *tc, Addr vaddr, Addr &paddr) = 0;
     virtual Fault
     translateFunctional(const RequestPtr &req, ThreadContext *tc, Mode mode)
     {

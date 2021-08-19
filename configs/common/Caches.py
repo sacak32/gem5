@@ -60,7 +60,8 @@ class L1_ICache(L1Cache):
     writeback_clean = True
 
 class L1_DCache(L1Cache):
-    pass
+    prefetch_on_access = True
+    mshrs = 12
 
 class L2Cache(Cache):
     assoc = 8

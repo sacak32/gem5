@@ -37,6 +37,8 @@ extern "C" {
 
 #include <gem5/asm/generic/m5ops.h>
 
+void m5_setup_prefetcher(uint64_t id, uint64_t start, 
+                         uint64_t end, uint64_t element_size);
 void m5_arm(uint64_t address);
 void m5_quiesce(void);
 void m5_quiesce_ns(uint64_t ns);

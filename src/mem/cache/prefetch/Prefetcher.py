@@ -79,6 +79,7 @@ class BasePrefetcher(ClockedObject):
         "Notify the hardware prefetcher on every access (not just misses)")
     use_virtual_addresses = Param.Bool(False,
         "Use virtual addresses for prefetching")
+    feedback_loop = Param.Bool(False, "Send data back to prefetcher")
 
     def __init__(self, **kwargs):
         super(BasePrefetcher, self).__init__(**kwargs)
@@ -154,6 +155,10 @@ class BFSPrefetcher(QueuedPrefetcher):
     cxx_header = "mem/cache/prefetch/bfs.hh"
 
     use_virtual_addresses = True
+    feedback_loop = True
+    on_write = False
+    queue_size = 200
+    max_prefetch_requests_with_pending_translation = 200
 
 class StridePrefetcher(QueuedPrefetcher):
     type = 'StridePrefetcher'

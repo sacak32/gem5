@@ -161,13 +161,14 @@ class O3_ARM_v7a_DCache(Cache):
     tag_latency = 2
     data_latency = 2
     response_latency = 2
-    mshrs = 6
+    mshrs = 12 
     tgts_per_mshr = 8
     size = '32kB'
     assoc = 2
     write_buffers = 16
     # Consider the L2 a victim cache also for clean lines
     writeback_clean = True
+    prefetcher = BfsPrefetcher()
 
 # TLB Cache
 # Use a cache as a L2 TLB

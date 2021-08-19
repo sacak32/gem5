@@ -97,7 +97,8 @@ Base::Base(const BasePrefetcherParams &p)
       prefetchOnAccess(p.prefetch_on_access),
       useVirtualAddresses(p.use_virtual_addresses),
       prefetchStats(this), issuedPrefetches(0),
-      usefulPrefetches(0), tlb(nullptr)
+      usefulPrefetches(0), tlb(nullptr),
+      feedbackLoop(p.feedback_loop)
 {
 }
 

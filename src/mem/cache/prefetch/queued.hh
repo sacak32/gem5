@@ -188,8 +188,18 @@ class Queued : public Base
 
     void insert(const PacketPtr &pkt, PrefetchInfo &new_pfi, int32_t priority);
 
-    virtual void calculatePrefetch(const PrefetchInfo &pfi,
-                                   std::vector<AddrPriority> &addresses) = 0;
+    virtual void calculatePrefetch(const PacketPtr &pkt,
+                                    std::vector<AddrPriority> &addresses)
+    {
+        warn("Not implemented.\n");
+    }
+                                   
+    virtual void calculatePrefetch(const PrefetchInfo &pkt,
+                                   std::vector<AddrPriority> &addresses)
+    {
+        warn("Not implemented.\n");
+    }
+
     PacketPtr getPacket() override;
 
     Tick nextPrefetchReadyTime() const override

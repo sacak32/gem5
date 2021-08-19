@@ -153,6 +153,11 @@ class MSHRQueue : public Queue<MSHR>
         // keep regressions unchanged
         return (allocated < numEntries - (numReserve + 1 + demandReserve));
     }
+
+    bool isNearlyFull() const
+    {
+        return (allocated > numEntries - numReserve);
+    }
 };
 
 #endif //__MEM_CACHE_MSHR_QUEUE_HH__

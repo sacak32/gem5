@@ -105,6 +105,8 @@ setupprefetcher(ThreadContext *tc,
                 uint64_t end, uint64_t element_size)
 {
     Prefetcher::BFS::setup(id, start, end, element_size);
+    DPRINTF(PseudoInst, "Prefetcher setup id: %#x start: %#x end %#x\n",
+            id, start, end);
 }
 
 void

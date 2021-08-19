@@ -161,9 +161,12 @@ Queued::notify(const PacketPtr &pkt, const PrefetchInfo &pfi)
         }
     }
 
+    // DPRINTF(HWPrefetch, "Inside queued notify\n");
+
     // Calculate prefetches given this access
     std::vector<AddrPriority> addresses;
-    calculatePrefetch(pfi, addresses);
+    //calculatePrefetch(pfi, addresses);
+    calculatePrefetch(pkt, addresses);
 
     // Get the maximu number of prefetches that we are allowed to generate
     size_t max_pfs = getMaxPermittedPrefetches(addresses.size());
