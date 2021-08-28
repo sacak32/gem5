@@ -44,6 +44,9 @@ namespace Prefetcher {
 
 class BFS : public Queued
 {
+private:
+  const ByteOrder byteOrder;
+
 public:
   static Addr baseVertexAddress;
   static Addr endVertexAddress;

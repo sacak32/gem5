@@ -1583,14 +1583,14 @@ TLB::getTE(TlbEntry **te, const RequestPtr &req, ThreadContext *tc, Mode mode,
     *te = lookup(vaddr, asid, vmid, isHyp, is_secure, false, false, target_el,
                  false);
     if (*te == NULL) {
-        if (req->isPrefetch()) {
+        /*if (req->isPrefetch()) {
             // if the request is a prefetch don't attempt to fill the TLB or go
             // any further with the memory access (here we can safely use the
             // fault status for the short desc. format in all cases)
            stats.prefetchFaults++;
            return std::make_shared<PrefetchAbort>(
                vaddr_tainted, ArmFault::PrefetchTLBMiss, isStage2);
-        }
+        }*/
 
         if (is_fetch)
             stats.instMisses++;

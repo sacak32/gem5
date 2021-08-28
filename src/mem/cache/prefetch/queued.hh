@@ -188,7 +188,7 @@ class Queued : public Base
 
     void insert(const PacketPtr &pkt, PrefetchInfo &new_pfi, int32_t priority);
 
-    virtual void calculatePrefetch(const PrefetchInfo &pkt,
+    virtual void calculatePrefetch(const PrefetchInfo &pfi,
                                    std::vector<AddrPriority> &addresses) = 0;
 
     PacketPtr getPacket() override;

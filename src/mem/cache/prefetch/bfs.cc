@@ -6,6 +6,7 @@
 
 #include "mem/cache/prefetch/bfs.hh"
 
+#include "mem/cache/base.hh"
 #include "debug/BFS.hh"
 #include "params/BFSPrefetcher.hh"
 
@@ -14,7 +15,7 @@ int graph500csr = 1;
 namespace Prefetcher {
 
 BFS::BFS(const BFSPrefetcherParams &p)
-  : Queued(p)
+  : Queued(p), byteOrder(p.sys->getGuestByteOrder())
 {
 }
 
@@ -97,14 +98,28 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
 
     Addr addr = pfi.getAddr();
 
+    if (baseVisitAddress <= addr && addr < endVisitAddress) {
+        DPRINTF(BFS, "Visit addr found: %#x\n", addr);
+        if (pfi.isCacheMiss())
+            DPRINTF(BFS, "Visit addr missed.\n");
+        else {
+           // Prefetch vertex address from visit offset 
+           assert(pfi.getSize() == sizeof(uint64_t));
+           uint64_t offset = pfi.get<uint64_t>(byteOrder);
+           Addr newAddr = baseVertexAddress + 8*offset;
+           DPRINTF(BFS, "Calculated vertex addr: %#x\n", newAddr);
+           addresses.push_back(AddrPriority(newAddr, 0));
+       }
+    }
+    
     if (baseVertexAddress <= addr && addr < endVertexAddress)
         DPRINTF(BFS, "Vertex addr found: %#x\n", addr);
-    if (baseVisitAddress <= addr && addr < endVisitAddress)
-        DPRINTF(BFS, "Visit addr found: %#x\n", addr);
-    if (baseVisitedAddress <= addr && addr < endVisitedAddress)
-        DPRINTF(BFS, "Visited addr found: %#x\n", addr);
+
     if (baseEdgeAddress <= addr && addr < endEdgeAddress)
         DPRINTF(BFS, "Edge addr found: %#x\n", addr);
+        
+    if (baseVisitedAddress <= addr && addr < endVisitedAddress)
+        DPRINTF(BFS, "Visited addr found: %#x\n", addr);
 }        
 
 void BFS::notifyFill(const PacketPtr &pkt)
