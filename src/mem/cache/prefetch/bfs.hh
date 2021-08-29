@@ -47,6 +47,10 @@ class BFS : public Queued
 private:
   const ByteOrder byteOrder;
 
+  Addr curVertexAddress;
+  Addr curEdgeStart;
+  Addr curEdgeEnd;
+
 public:
   static Addr baseVertexAddress;
   static Addr endVertexAddress;

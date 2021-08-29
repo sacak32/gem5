@@ -195,7 +195,14 @@ class Queued : public Base
 
     Tick nextPrefetchReadyTime() const override
     {
-        return pfq.empty() ? MaxTick : pfq.front().tick;
+        if (pfq.empty()) {
+            if (pfqMissingTranslation.empty())
+                return MaxTick;
+            else
+                return clockPeriod();
+        }
+        
+        return pfq.front().tick;
     }
 
   private:

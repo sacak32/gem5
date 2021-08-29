@@ -55,7 +55,7 @@
 namespace Prefetcher {
 
 Base::PrefetchInfo::PrefetchInfo(PacketPtr pkt, Addr addr, bool miss)
-  : address(addr), pc(pkt->req->hasPC() ? pkt->req->getPC() : 0),
+  : cmd(pkt->cmd), address(addr), pc(pkt->req->hasPC() ? pkt->req->getPC() : 0),
     requestorId(pkt->req->requestorId()), validPC(pkt->req->hasPC()),
     secure(pkt->isSecure()), size(pkt->req->getSize()), write(pkt->isWrite()),
     paddress(pkt->req->getPaddr()), cacheMiss(miss)

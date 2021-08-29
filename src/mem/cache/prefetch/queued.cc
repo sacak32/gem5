@@ -55,9 +55,10 @@ Queued::DeferredPacket::createPkt(Addr paddr, unsigned blk_size,
                                             bool tag_prefetch,
                                             Tick t) {
     /* Create a prefetch memory request */
-    RequestPtr req = std::make_shared<Request>(paddr, blk_size,
+    RequestPtr req = std::make_shared<Request>(paddr, 8,
                                                 0, requestor_id);
-
+    req->setVaddr(pfInfo.getAddr());
+    
     if (pfInfo.isSecure()) {
         req->setFlags(Request::SECURE);
     }
@@ -173,7 +174,7 @@ Queued::notify(const PacketPtr &pkt, const PrefetchInfo &pfi)
     for (AddrPriority& addr_prio : addresses) {
 
         // Block align prefetch address
-        addr_prio.first = blockAddress(addr_prio.first);
+        // addr_prio.first = blockAddress(addr_prio.first);
 
         if (!samePage(addr_prio.first, pfi.getAddr())) {
             statsQueued.pfSpanPage += 1;
@@ -371,7 +372,7 @@ Queued::insert(const PacketPtr &pkt, PrefetchInfo &new_pfi,
 
     Addr target_paddr;
     bool has_target_pa = false;
-    RequestPtr translation_req = nullptr;
+    RequestPtr translation_req = nullptr; 
     if (samePage(orig_addr, new_pfi.getAddr())) {
         if (useVirtualAddresses) {
             // if we trained with virtual addresses,

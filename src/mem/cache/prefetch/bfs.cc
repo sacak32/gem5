@@ -17,6 +17,9 @@ namespace Prefetcher {
 BFS::BFS(const BFSPrefetcherParams &p)
   : Queued(p), byteOrder(p.sys->getGuestByteOrder())
 {
+    curVertexAddress = 0;
+    curEdgeStart = 0;
+    curEdgeEnd = 0;
 }
 
 bool BFS::inSearch = false;
@@ -93,49 +96,89 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
                             std::vector<AddrPriority> &addresses)
 
 {
-    if (!inSearch)
+    if (!inSearch || pfi.isCacheMiss())
         return;
 
     Addr addr = pfi.getAddr();
 
+    if (pfi.getCmd() != MemCmd::HardPFReq && 
+        !(baseVisitAddress <= addr && addr < endVisitAddress))
+       return;
+    
+    // Prefetch with visit address
     if (baseVisitAddress <= addr && addr < endVisitAddress) {
-        DPRINTF(BFS, "Visit addr found: %#x\n", addr);
-        if (pfi.isCacheMiss())
-            DPRINTF(BFS, "Visit addr missed.\n");
-        else {
-           // Prefetch vertex address from visit offset 
-           assert(pfi.getSize() == sizeof(uint64_t));
-           uint64_t offset = pfi.get<uint64_t>(byteOrder);
-           Addr newAddr = baseVertexAddress + 8*offset;
-           DPRINTF(BFS, "Calculated vertex addr: %#x\n", newAddr);
-           addresses.push_back(AddrPriority(newAddr, 0));
-       }
+        // Get visit data
+        assert(pfi.getSize() == sizeof(uint64_t));
+        uint64_t data = pfi.get<uint64_t>(byteOrder);
+        DPRINTF(BFS, "Visit addr found: %#x data: %lu\n", addr, data);
+
+        // If visit address is prefetched, prefetch the vertexes.
+        if (pfi.getCmd() == MemCmd::HardPFReq)
+        {
+            // prefetch vertex data from visit data
+            Addr newAddr = graph500csr ? 16*data : 8*data;
+            newAddr += baseVertexAddress;
+            DPRINTF(BFS, "Calculated vertex addr: %#x\n", newAddr);
+            addresses.push_back(AddrPriority(newAddr, 0));
+            addresses.push_back(AddrPriority(newAddr+8, 0));
+
+            curVertexAddress = newAddr;
+            curEdgeStart = 0;
+            curEdgeEnd = 0;
+        }
+        // Else prefetch next visit address
+        else 
+        {
+            Addr newAddr = addr + 8;
+            if (newAddr < endVisitAddress)
+            {
+                DPRINTF(BFS, "Calculated visit addr: %#x\n", newAddr);
+                addresses.push_back(AddrPriority(newAddr, 0));
+            }
+            else
+                DPRINTF(BFS, "VISIT ADDR BOUNDARY PASSED!!!\n");
+        }
     }
     
-    if (baseVertexAddress <= addr && addr < endVertexAddress)
-        DPRINTF(BFS, "Vertex addr found: %#x\n", addr);
-
-    if (baseEdgeAddress <= addr && addr < endEdgeAddress)
-        DPRINTF(BFS, "Edge addr found: %#x\n", addr);
+    if (baseVertexAddress <= addr && addr < endVertexAddress) {
+        assert(pfi.getSize() == sizeof(uint64_t));
+        uint64_t data = pfi.get<uint64_t>(byteOrder);
         
-    if (baseVisitedAddress <= addr && addr < endVisitedAddress)
-        DPRINTF(BFS, "Visited addr found: %#x\n", addr);
+        // Extract edge address from vertex data
+        if (addr == curVertexAddress) {
+            DPRINTF(BFS, "Start vertex addr found: %#x data: %lu\n", addr, data);
+            curEdgeStart = baseEdgeAddress + 8*data;
+        }
+        else if (addr == curVertexAddress+8) {
+            DPRINTF(BFS, "End vertex addr found: %#x data: %lu\n", addr, data);
+            curEdgeEnd = baseEdgeAddress + 8*data;
+        } 
+        else
+            DPRINTF(BFS,"Vertex addr issue!!\n");
+        
+        // Wait until both edge start and edge end are set.
+        if (curEdgeStart == 0 || curEdgeEnd == 0)
+            return;
+
+        DPRINTF(BFS, "Edge addresses completed!\n"); 
+    }
+
+    if (baseEdgeAddress <= addr && addr < endEdgeAddress) {
+        assert(pfi.getSize() == sizeof(uint64_t));
+        uint64_t data = pfi.get<uint64_t>(byteOrder);
+        DPRINTF(BFS, "Edge addr found: %#x data: %lu\n", addr, data);
+    }        
+
+    if (baseVisitedAddress <= addr && addr < endVisitedAddress) {
+        assert(pfi.getSize() == sizeof(uint64_t));
+        uint64_t data = pfi.get<uint64_t>(byteOrder);
+        DPRINTF(BFS, "Visited addr found: %#x data: %lu\n", addr, data);
+    }
 }        
 
 void BFS::notifyFill(const PacketPtr &pkt)
 {
-    /*
-    if (pkt->cmd != MemCmd::HardPFReq && pkt->cmd != MemCmd::HardPFResp)
-        return;
-
-    DPRINTF(BFS, "Prefetch fill!!!\n");
-    
-    if (pkt->req->hasVaddr())
-        DPRINTF(BFS, "Oh my god!! Our prefetch req has a virtual addr: %#x\n", pkt->req->getVaddr());
-
-    PrefetchInfo pfi(pkt, pkt->req->getPaddr(), true);
-    notify(pkt, pfi);
-    */
+    probeNotify(pkt, false);
 }
 
 } // namespace Prefetcher

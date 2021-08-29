@@ -88,6 +88,7 @@ class Base : public ClockedObject
      * generate new prefetch requests.
      */
     class PrefetchInfo {
+        MemCmd cmd;        
         /** The address used to train and generate prefetches */
         Addr address;
         /** The program counter that generated this address. */
@@ -154,6 +155,11 @@ class Base : public ClockedObject
         RequestorID getRequestorId() const
         {
             return requestorId;
+        }
+
+        MemCmd getCmd() const
+        {
+            return cmd;
         }
 
         /**

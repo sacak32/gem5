@@ -56,6 +56,7 @@
 #include "debug/CacheTags.hh"
 #include "debug/CacheVerbose.hh"
 #include "enums/Clusivity.hh"
+#include "mem/cache/prefetch/base.hh"
 #include "mem/cache/cache_blk.hh"
 #include "mem/cache/mshr.hh"
 #include "mem/cache/tags/base.hh"
@@ -852,8 +853,12 @@ Cache::serviceMSHRTargets(MSHR *mshr, const PacketPtr pkt, CacheBlk *blk)
           case MSHR::Target::FromPrefetcher:
             assert(tgt_pkt->cmd == MemCmd::HardPFReq);
 
-            if (blk)
+            if (blk) {
                 blk->setPrefetched();
+                tgt_pkt->setDataFromBlock(blk->data, blkSize);
+                if(prefetcher->feedbackLoop) 
+                    prefetcher->notifyFill(tgt_pkt);
+            }
             delete tgt_pkt;
             break;
 
