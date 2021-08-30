@@ -117,6 +117,10 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
         assert(pfi.getSize() == sizeof(uint64_t));
         uint64_t data = pfi.get<uint64_t>(byteOrder);
         DPRINTF(BFS, "Visit addr found: %#x data: %lu\n", addr, data);
+
+        // Writes to visit queue should be ignored
+        if (data == 0) return;
+
         /*
         // If visit address is prefetched, prefetch the vertexes.
         if (pfi.getCmd() == MemCmd::HardPFReq)
