@@ -88,6 +88,7 @@ class Base : public ClockedObject
      * generate new prefetch requests.
      */
     class PrefetchInfo {
+        ContextID contextId;
         MemCmd cmd;        
         /** The address used to train and generate prefetches */
         Addr address;
@@ -162,6 +163,11 @@ class Base : public ClockedObject
             return cmd;
         }
 
+        ContextID getContext() const
+        {
+            return contextId;
+        }
+        
         /**
          * Gets the size of the request triggering this event
          * @return the size in bytes of the request triggering this event
@@ -217,6 +223,25 @@ class Base : public ClockedObject
 
                 case ByteOrder::little:
                     return letoh(*(T*)data);
+
+                default:
+                    panic("Illegal byte order in PrefetchInfo::get()\n");
+            };
+        }
+        
+        template <typename T>
+        inline T
+        get(ByteOrder endian, unsigned offset) const
+        {
+            if (data == nullptr) {
+                panic("PrefetchInfo::get called with a request with no data.");
+            }
+            switch (endian) {
+                case ByteOrder::big:
+                    return betoh(*(T*)(data+offset));
+
+                case ByteOrder::little:
+                    return letoh(*(T*)(data+offset));
 
                 default:
                     panic("Illegal byte order in PrefetchInfo::get()\n");

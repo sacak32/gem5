@@ -134,9 +134,7 @@ def config_cache(options, system):
             dcache = dcache_class(**_get_cache_opts('l1d', options))
 
             # If we have a data prefetcher, connect TLB
-            if dcache.prefetcher.type == "BFSPrefetcher":
-                dcache.prefetcher.registerTLB(system.cpu[i].mmu.dtb)
-                system.cpu[i].mmu.dtb.size = 1024
+            dcache.prefetcher.registerTLB(system.cpu[i].mmu.dtb)
 
             # If we have a walker cache specified, instantiate two
             # instances here

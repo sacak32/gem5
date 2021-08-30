@@ -55,7 +55,8 @@ Queued::DeferredPacket::createPkt(Addr paddr, unsigned blk_size,
                                             bool tag_prefetch,
                                             Tick t) {
     /* Create a prefetch memory request */
-    RequestPtr req = std::make_shared<Request>(paddr, 8,
+    unsigned fetch_size = owner->getFetchSize(pfInfo.getAddr());
+    RequestPtr req = std::make_shared<Request>(paddr, fetch_size,
                                                 0, requestor_id);
     req->setVaddr(pfInfo.getAddr());
     
@@ -63,6 +64,8 @@ Queued::DeferredPacket::createPkt(Addr paddr, unsigned blk_size,
         req->setFlags(Request::SECURE);
     }
     req->taskId(ContextSwitchTaskId::Prefetcher);
+    req->setContext(pfInfo.getContext());
+
     pkt = new Packet(req, MemCmd::HardPFReq);
     pkt->allocate();
     if (tag_prefetch && pfInfo.hasPC()) {
@@ -389,6 +392,7 @@ Queued::insert(const PacketPtr &pkt, PrefetchInfo &new_pfi,
 
         // ContextID is needed for translation
         if (!pkt->req->hasContextId()) {
+            DPRINTF(HWPrefetch, "No packet contextId!!!");
             return;
         }
         if (useVirtualAddresses) {

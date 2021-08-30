@@ -55,10 +55,12 @@
 namespace Prefetcher {
 
 Base::PrefetchInfo::PrefetchInfo(PacketPtr pkt, Addr addr, bool miss)
-  : cmd(pkt->cmd), address(addr), pc(pkt->req->hasPC() ? pkt->req->getPC() : 0),
+  : contextId(pkt->req->hasContextId() ? pkt->req->contextId() : 0), 
+    cmd(pkt->cmd), address(addr),
+    pc(pkt->req->hasPC() ? pkt->req->getPC() : 0),
     requestorId(pkt->req->requestorId()), validPC(pkt->req->hasPC()),
     secure(pkt->isSecure()), size(pkt->req->getSize()), write(pkt->isWrite()),
-    paddress(pkt->req->getPaddr()), cacheMiss(miss)
+    paddress(pkt->req->getPaddr()), cacheMiss(miss) 
 {
     unsigned int req_size = pkt->req->getSize();
     if (!write && miss) {
@@ -71,7 +73,8 @@ Base::PrefetchInfo::PrefetchInfo(PacketPtr pkt, Addr addr, bool miss)
 }
 
 Base::PrefetchInfo::PrefetchInfo(PrefetchInfo const &pfi, Addr addr)
-  : address(addr), pc(pfi.pc), requestorId(pfi.requestorId),
+  : contextId(pfi.getContext()), cmd(pfi.getCmd()),
+    address(addr), pc(pfi.pc), requestorId(pfi.requestorId),
     validPC(pfi.validPC), secure(pfi.secure), size(pfi.size),
     write(pfi.write), paddress(pfi.paddress), cacheMiss(pfi.cacheMiss),
     data(nullptr)

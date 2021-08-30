@@ -159,6 +159,7 @@ class BFSPrefetcher(QueuedPrefetcher):
     on_write = False
     queue_size = 200
     max_prefetch_requests_with_pending_translation = 200
+    prefetch_distance = Param.Unsigned(64, "Prefetch distance")
 
 class StridePrefetcher(QueuedPrefetcher):
     type = 'StridePrefetcher'

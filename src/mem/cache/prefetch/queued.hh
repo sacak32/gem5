@@ -190,6 +190,11 @@ class Queued : public Base
 
     virtual void calculatePrefetch(const PrefetchInfo &pfi,
                                    std::vector<AddrPriority> &addresses) = 0;
+                            
+    virtual unsigned getFetchSize(Addr addr)
+    {
+        return blkSize;
+    }
 
     PacketPtr getPacket() override;
 

@@ -46,6 +46,7 @@ class BFS : public Queued
 {
 private:
   const ByteOrder byteOrder;
+  const unsigned prefetchDistance;
 
   Addr curVertexAddress;
   Addr curEdgeStart;
@@ -75,6 +76,8 @@ public:
                       uint64_t end, uint64_t element_size);
   
   void notifyFill(const PacketPtr &pkt) override;
+
+  unsigned getFetchSize(Addr addr) override;
 };
 
 } // namespace Prefetcher
