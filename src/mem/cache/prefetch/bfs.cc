@@ -23,7 +23,7 @@ BFS::BFS(const BFSPrefetcherParams &p)
   : Queued(p), byteOrder(p.sys->getGuestByteOrder()),
     prefetchDistance(p.prefetch_distance)
 {
-    curVertexAddress = 0;
+    curVisitAddr = 0;
     curEdgeStart = 0;
     curEdgeEnd = 0;
 }
@@ -108,7 +108,8 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
     Addr addr = pfi.getAddr();
 
     if (pfi.getCmd() != MemCmd::HardPFReq && 
-        !(baseVisitAddress <= addr && addr < endVisitAddress)) 
+        !(baseVisitAddress <= addr && addr < endVisitAddress) &&
+        !(curEdgeStart <= addr && addr < curEdgeEnd))
        return;
     
     // Prefetch with visit address
@@ -131,6 +132,7 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
             DPRINTF(BFS, "Calculated vertex addr: %#x\n", newAddr);
             addresses.push_back(AddrPriority(newAddr, 0));
 
+            curVisitAddr = addr;
             curEdgeStart = 0;
             curEdgeEnd = 0;
         /*}
@@ -187,12 +189,19 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
                 Addr newAddr = baseVisitedAddress + VISITED_DATA_SIZE * offset;
                 addresses.push_back(AddrPriority(newAddr,0));
             }
+            // If we are prefetching the last visited addr, prefetch the next visit addr
+            /*
+            if (cur == curEdgeEnd - EDGE_DATA_SIZE)
+            {
+                Addr newAddr = curVisitAddr + VISIT_DATA_SIZE;
+                if (newAddr < endVisitAddress)
+                    addresses.push_back(AddrPriority(newAddr,0));
+            }*/
         }
     }        
     
-    // TODO: if the edge address is loaded, prefetch the neccesary edge block
-    /*
-    if (baseEdgeAddress <= addr && addr < endEdgeAddress && 
+    // if the edge address is loaded, prefetch the neccesary edge block
+    if (curEdgeStart <= addr && addr < curEdgeEnd && 
         pfi.getSize() == EDGE_DATA_SIZE && addr % blkSize == 0)
     {
         DPRINTF(BFS, "Edge load found: %#x offset: %lu\n", addr,
@@ -201,7 +210,7 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
         Addr newAddr = addr + blkSize * prefetchDistance / EDGE_DATA_SIZE;
         if (newAddr < curEdgeEnd)
             addresses.push_back(AddrPriority(newAddr,0));
-    }*/
+    }
 
     // Print the visited address
     if (baseVisitedAddress <= addr && addr < endVisitedAddress) {

@@ -48,7 +48,7 @@ private:
   const ByteOrder byteOrder;
   const unsigned prefetchDistance;
 
-  Addr curVertexAddress;
+  Addr curVisitAddr;
   Addr curEdgeStart;
   Addr curEdgeEnd;
 

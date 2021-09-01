@@ -135,7 +135,8 @@ def config_cache(options, system):
 
             # If we have a data prefetcher, connect TLB
             dcache.prefetcher.registerTLB(system.cpu[i].mmu.dtb)
-
+            system.cpu[i].mmu.dtb.size = 1024
+            
             # If we have a walker cache specified, instantiate two
             # instances here
             if walk_cache_class:
