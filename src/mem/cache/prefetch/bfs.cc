@@ -5,6 +5,7 @@
  */
 
 #include "mem/cache/prefetch/bfs.hh"
+#include "mem/cache/prefetch/fifo_buffer_impl.hh"
 
 #include "mem/cache/base.hh"
 #include "debug/BFS.hh"
@@ -21,7 +22,8 @@ namespace Prefetcher {
 
 BFS::BFS(const BFSPrefetcherParams &p)
   : Queued(p), byteOrder(p.sys->getGuestByteOrder()),
-    prefetchDistance(p.prefetch_distance)
+    prefetchDistance(p.prefetch_distance),
+    buffer(p.pfb_size, p.pfb_waiting_size)
 {
     curVisitAddr = 0;
     curEdgeStart = 0;
@@ -148,6 +150,7 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
             else
                 DPRINTF(BFS, "VISIT ADDR BOUNDARY PASSED!!!\n");
         }*/
+        buffer.flush();
     }
     
     if (baseVertexAddress <= addr && addr < endVertexAddress) {
@@ -174,7 +177,8 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
     }
     
     // If the edge block is prefetched, prefetch the visited data.
-    if (blockAddress(baseEdgeAddress) <= addr && addr < endEdgeAddress && pfi.getSize() == blkSize) {
+    if (blockAddress(baseEdgeAddress) <= addr && addr < endEdgeAddress &&
+        pfi.getCmd() == MemCmd::HardPFReq)  {
         DPRINTF(BFS, "Edge addr found: %#x offset: %lu\n", addr, 
                (addr - baseEdgeAddress) / EDGE_DATA_SIZE);
 
@@ -188,6 +192,7 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
                 uint64_t offset = pfi.get<uint64_t>(byteOrder, EDGE_DATA_SIZE*i);
                 Addr newAddr = baseVisitedAddress + VISITED_DATA_SIZE * offset;
                 addresses.push_back(AddrPriority(newAddr,0));
+                buffer.enqueue(newAddr);
             }
             // If we are prefetching the last visited addr, prefetch the next visit addr
             /*
@@ -201,8 +206,8 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
     }        
     
     // if the edge address is loaded, prefetch the neccesary edge block
-    if (curEdgeStart <= addr && addr < curEdgeEnd && 
-        pfi.getSize() == EDGE_DATA_SIZE && addr % blkSize == 0)
+    if (curEdgeStart <= addr && addr < curEdgeEnd && pfi.getSize() == EDGE_DATA_SIZE &&
+        pfi.getCmd() != MemCmd::HardPFReq && addr % blkSize == 0)
     {
         DPRINTF(BFS, "Edge load found: %#x offset: %lu\n", addr,
                (addr - baseEdgeAddress) / EDGE_DATA_SIZE);
@@ -216,6 +221,7 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
     if (baseVisitedAddress <= addr && addr < endVisitedAddress) {
         assert(pfi.getSize() == sizeof(uint64_t));
         uint64_t data = pfi.get<uint64_t>(byteOrder);
+        buffer.setData(addr, data);
         DPRINTF(BFS, "Visited addr found: %#x offset: %lu data: %lu\n", addr,
                 (addr - baseVisitedAddress) / VISITED_DATA_SIZE, data);
     }

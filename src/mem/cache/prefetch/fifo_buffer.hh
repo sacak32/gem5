@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2005 The Regents of The University of Michigan
+/**
+ * Copyright (c) 2018 Metempsy Technology Consulting
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,64 +24,39 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * Authors: Ron Dreslinski
  */
 
-/**
- * @file
- * Describes a tagged prefetcher.
- */
+#ifndef __CACHE_PREFETCH_FIFO_BUFFER_HH__
+#define __CACHE_PREFETCH_FIFO_BUFFER_HH__
 
-#ifndef __MEM_CACHE_PREFETCH_BFS_HH__
-#define __MEM_CACHE_PREFETCH_BFS_HH__
+class FIFOBuffer {
+  private:
+    struct BufferEntry
+    {
+        Addr tag;
+        enum State {CALCULATED, ASSIGNED, VALID} state;
+        uint64_t data;
 
-#include "mem/cache/prefetch/queued.hh"
-#include "mem/cache/prefetch/fifo_buffer.hh"
+        BufferEntry(Addr t, State s = CALCULATED, uint64_t d = 0) :
+            tag(t), state(s), data(d) {}
+    };
 
-struct BFSPrefetcherParams;
+    std::list<BufferEntry> pfb;
+    std::list<BufferEntry> pfbWaiting;
 
-namespace Prefetcher {
+    using iterator = std::list<BufferEntry>::iterator;
 
-class BFS : public Queued
-{
-private:
-  const ByteOrder byteOrder;
-  const unsigned prefetchDistance;
-  FIFOBuffer buffer;
+    const unsigned pfbSize;
+    const unsigned pfbWaitingSize;
 
-  Addr curVisitAddr;
-  Addr curEdgeStart;
-  Addr curEdgeEnd;
-
-public:
-  static Addr baseVertexAddress;
-  static Addr endVertexAddress;
-  static Addr baseEdgeAddress;
-  static Addr endEdgeAddress;
-  static Addr baseVisitAddress;
-  static Addr endVisitAddress;
-  static Addr baseVisitedAddress;
-  static Addr endVisitedAddress;
-
-  static bool inSearch;
-  static uint64_t size_of_visited_items;
-
-  BFS(const BFSPrefetcherParams &p);
-  ~BFS() = default;
-
-  void
-  calculatePrefetch(const PrefetchInfo &pfi,
-                    std::vector<AddrPriority> &addresses);
-                    
-  static void setup(uint64_t id, uint64_t start,
-                      uint64_t end, uint64_t element_size);
-  
-  void notifyFill(const PacketPtr &pkt) override;
-
-  unsigned getFetchSize(Addr addr) override;
+  public:
+    FIFOBuffer(unsigned ps, unsigned pws);
+    ~FIFOBuffer() = default;
+   
+   bool enqueue(Addr tag);
+   bool setData(Addr tag, uint64_t data);
+   bool dequeue(Addr tag, uint64_t &data);
+   void flush();
 };
 
-} // namespace Prefetcher
-
-#endif // __MEM_CACHE_PREFETCH_BFS_HH__
+#endif //__CACHE_PREFETCH_FIFO_BUFFER_HH__
