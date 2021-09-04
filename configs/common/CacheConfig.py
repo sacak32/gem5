@@ -134,7 +134,7 @@ def config_cache(options, system):
             dcache = dcache_class(**_get_cache_opts('l1d', options))
 
             # If we have a data prefetcher, connect TLB
-            if hasattr(options, 'l1d_hwp_type'):
+            if options.l1d_hwp_type:
                 dcache.prefetcher.registerTLB(system.cpu[i].mmu.dtb)
                 system.cpu[i].mmu.dtb.size = 1024
             

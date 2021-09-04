@@ -248,6 +248,12 @@ class Base : public ClockedObject
             };
         }
 
+        uint8_t*
+        getData() const
+        {
+            return data;
+        }
+
         /**
          * Check for equality
          * @param pfi PrefetchInfo to compare against
@@ -380,6 +386,11 @@ class Base : public ClockedObject
     /** Notify prefetcher of cache fill */
     virtual void notifyFill(const PacketPtr &pkt)
     {}
+
+    virtual bool trySatisfyAccess(PacketPtr &pkt, Cycles &lat)
+    {
+        return false;
+    }
 
     virtual PacketPtr getPacket() = 0;
 

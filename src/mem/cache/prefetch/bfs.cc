@@ -23,7 +23,8 @@ namespace Prefetcher {
 BFS::BFS(const BFSPrefetcherParams &p)
   : Queued(p), byteOrder(p.sys->getGuestByteOrder()),
     prefetchDistance(p.prefetch_distance),
-    buffer(p.pfb_size, p.pfb_waiting_size)
+    buffer(p.pfb_size, p.pfb_waiting_size),
+    bufferLatency(p.pfb_latency)
 {
     curVisitAddr = 0;
     curEdgeStart = 0;
@@ -221,18 +222,51 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
     if (baseVisitedAddress <= addr && addr < endVisitedAddress) {
         assert(pfi.getSize() == sizeof(uint64_t));
         uint64_t data = pfi.get<uint64_t>(byteOrder);
-        buffer.setData(addr, data);
+        buffer.setData(addr, pfi.getData());
         DPRINTF(BFS, "Visited addr found: %#x offset: %lu data: %lu\n", addr,
                 (addr - baseVisitedAddress) / VISITED_DATA_SIZE, data);
     }
 }        
 
-void BFS::notifyFill(const PacketPtr &pkt)
+void 
+BFS::notifyFill(const PacketPtr &pkt)
 {
     probeNotify(pkt, false);
 }
 
-unsigned BFS::getFetchSize(Addr addr)
+bool 
+BFS::trySatisfyAccess(PacketPtr &pkt, Cycles &lat)
+{
+    // Prefetcher must be working to satisfy accesses
+    if (!inSearch)
+        return false;
+
+    // Consider only read requests with valid virtual address
+    if (!pkt->req->hasVaddr() || pkt->cmd != MemCmd::ReadReq)
+        return false;
+    
+    Addr vaddr = pkt->req->getVaddr();
+    
+    // FIFO Buffer must only have visited data
+    if (baseVisitedAddress > vaddr || vaddr >= endVisitedAddress)
+        return false;
+
+    // Try request 
+    uint8_t* data = new uint8_t[VISITED_DATA_SIZE];
+    bool satisfied = buffer.dequeue(vaddr, data);
+
+    if (!satisfied)
+        return false;
+
+    pkt->setData(data);
+    lat = bufferLatency;
+
+    delete data;
+    return true; 
+}
+
+unsigned 
+BFS::getFetchSize(Addr addr)
 {
     if (baseVisitAddress <= addr && addr < endVisitAddress)
         return 8;

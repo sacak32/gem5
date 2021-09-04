@@ -32,6 +32,8 @@
 #include "mem/cache/prefetch/fifo_buffer.hh"
 #include "debug/FIFOBuffer.hh"
 
+#define DATA_SIZE 8 // bytes
+
 FIFOBuffer::FIFOBuffer(unsigned ps, unsigned pws) : 
     pfbSize(ps), pfbWaitingSize(pws)
 {}
@@ -49,43 +51,49 @@ FIFOBuffer::enqueue(Addr tag)
 }
 
 bool 
-FIFOBuffer::setData(Addr tag, uint64_t data)
+FIFOBuffer::setData(Addr tag, uint8_t* data)
 {
     iterator it = pfb.begin();
     while (it != pfb.end() && it->tag != tag)
         it++;
 
     if (it == pfb.end()) {
-        DPRINTF(FIFOBuffer, "Buffer set data for addr: %#x data: %lu failed.\n",
-            tag, data);
+        DPRINTF(FIFOBuffer, "Buffer set data for addr: %#x failed.\n",
+            tag);
         return false;
     } 
-        
-    it->data = data;
+       
+    assert(it->data == nullptr);
+    it->data = new uint8_t[DATA_SIZE];
+    
+    std::memcpy(it->data, data, DATA_SIZE);
     it->state = BufferEntry::VALID;
-    DPRINTF(FIFOBuffer, "Buffer set data for addr: %#x data: %lu succeeded.\n",
-        tag, data);
+    DPRINTF(FIFOBuffer, "Buffer set data for addr: %#x succeeded.\n",
+        tag);
     return true;
 }
     
 bool 
-FIFOBuffer::dequeue(Addr tag, uint64_t &data)
+FIFOBuffer::dequeue(Addr tag, uint8_t* &data)
 {
-    assert(!pfb.empty());
+    if (pfb.empty()) {
+        DPRINTF(FIFOBuffer, "Request addr: %#x failed, buffer empty.\n", tag);
+        return false;
+    }
 
     BufferEntry* be = &pfb.front();
     bool satisfied = false;
     if (be->tag != tag) 
-        DPRINTF(FIFOBuffer, "Request addr: %#x data: %lu not found in the head of buffer.\n",
-            tag, data);
+        DPRINTF(FIFOBuffer, "Request addr: %#x not found in the head of buffer.\n",
+            tag);
     else if (be->state != BufferEntry::VALID)
-        DPRINTF(FIFOBuffer, "Request addr: %#x data: %lu is still being fetched.\n",
-            tag, data);
+        DPRINTF(FIFOBuffer, "Request addr: %#x is still being fetched.\n",
+            tag);
     else {
-        data = be->data;
+        std::memcpy(data, be->data, DATA_SIZE);
         satisfied = true; 
-        DPRINTF(FIFOBuffer, "Request addr: %#x data: %lu is succesfully dequeued from buffer.\n", 
-            tag, data);
+        DPRINTF(FIFOBuffer, "Request addr: %#x is succesfully dequeued from buffer.\n", 
+            tag);
     }
 
     pfb.pop_front();
@@ -97,6 +105,7 @@ FIFOBuffer::flush()
 {
    while (!pfb.empty())
        pfb.pop_front();
+   DPRINTF(FIFOBuffer, "Buffer flushed.\n");
 }
 
 #endif //__CACHE_PREFETCH_FIFO_BUFFER_IMPL_HH__

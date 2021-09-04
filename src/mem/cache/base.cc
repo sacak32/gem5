@@ -351,7 +351,10 @@ BaseCache::recvTimingReq(PacketPtr pkt)
     Cycles lat;
     CacheBlk *blk = nullptr;
     bool satisfied = false;
-    {
+    // Try prefetch buffer first
+    if (prefetcher && prefetcher->trySatisfyAccess(pkt, lat)) {
+        satisfied = true;
+    } else {    
         PacketList writebacks;
         // Note that lat is passed by reference here. The function
         // access() will set the lat value.

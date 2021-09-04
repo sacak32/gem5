@@ -35,10 +35,15 @@ class FIFOBuffer {
     {
         Addr tag;
         enum State {CALCULATED, ASSIGNED, VALID} state;
-        uint64_t data;
+        uint8_t* data;
 
-        BufferEntry(Addr t, State s = CALCULATED, uint64_t d = 0) :
-            tag(t), state(s), data(d) {}
+        BufferEntry(Addr t, State s = CALCULATED) :
+            tag(t), state(s), data(nullptr) {}
+
+        ~BufferEntry() {
+            if (data)
+                delete data;
+        }
     };
 
     std::list<BufferEntry> pfb;
@@ -54,8 +59,8 @@ class FIFOBuffer {
     ~FIFOBuffer() = default;
    
    bool enqueue(Addr tag);
-   bool setData(Addr tag, uint64_t data);
-   bool dequeue(Addr tag, uint64_t &data);
+   bool setData(Addr tag, uint8_t* data);
+   bool dequeue(Addr tag, uint8_t* &data);
    void flush();
 };
 

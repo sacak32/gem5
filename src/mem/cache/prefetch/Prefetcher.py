@@ -161,6 +161,7 @@ class BFSPrefetcher(QueuedPrefetcher):
     max_prefetch_requests_with_pending_translation = 200
     prefetch_distance = Param.Unsigned(64, "Prefetch distance")
     pfb_size = Param.Unsigned(100, "FIFO Buffer size.")
+    pfb_latency = Param.Cycles(1, "FIFO Buffer latency.")
     pfb_waiting_size = Param.Unsigned(100, "FIFO waiting buffer size.") 
 
 class StridePrefetcher(QueuedPrefetcher):

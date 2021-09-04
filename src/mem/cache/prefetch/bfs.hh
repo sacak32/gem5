@@ -49,6 +49,7 @@ private:
   const ByteOrder byteOrder;
   const unsigned prefetchDistance;
   FIFOBuffer buffer;
+  Cycles bufferLatency;
 
   Addr curVisitAddr;
   Addr curEdgeStart;
@@ -78,6 +79,8 @@ public:
                       uint64_t end, uint64_t element_size);
   
   void notifyFill(const PacketPtr &pkt) override;
+
+  bool trySatisfyAccess(PacketPtr &pkt, Cycles &lat) override;
 
   unsigned getFetchSize(Addr addr) override;
 };
