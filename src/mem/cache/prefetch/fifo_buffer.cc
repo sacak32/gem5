@@ -30,20 +30,18 @@
 #include "debug/FIFOBuffer.hh"
 #include "params/FIFOBuffer.hh"
 
-#define DATA_SIZE 8 // bytes
-
 namespace Prefetcher {
 
 FIFOBuffer::FIFOBuffer(const FIFOBufferParams &p) : 
     SimObject(p),
-    size(p.size), waitingSize(p.waiting_size),
-    latency(p.latency), statsFIFO(this)
+    bufferSize(p.buffer_size), waitingSize(p.waiting_size),
+    dataSize(p.data_size), latency(p.latency), statsFIFO(this)
 {}
 
 bool 
 FIFOBuffer::enqueue(Addr tag)
 {
-    if (pfb.size() == size) 
+    if (pfb.size() == bufferSize) 
         panic("Buffer full.\n");
 
     BufferEntry be(tag, BufferEntry::ASSIGNED);
@@ -66,9 +64,9 @@ FIFOBuffer::setData(Addr tag, uint8_t* data)
     } 
        
     assert(it->data == nullptr);
-    it->data = new uint8_t[DATA_SIZE];
+    it->data = new uint8_t[dataSize];
     
-    std::memcpy(it->data, data, DATA_SIZE);
+    std::memcpy(it->data, data, dataSize);
     it->state = BufferEntry::VALID;
     DPRINTF(FIFOBuffer, "Buffer set data for addr: %#x succeeded.\n",
         tag);
@@ -94,7 +92,7 @@ FIFOBuffer::dequeue(Addr tag, uint8_t* &data, Cycles &lat)
         DPRINTF(FIFOBuffer, "Request addr: %#x is still being fetched.\n",
             tag);
     } else {
-        std::memcpy(data, be->data, DATA_SIZE);
+        std::memcpy(data, be->data, dataSize);
         lat = latency;
         satisfied = true; 
 
@@ -107,6 +105,33 @@ FIFOBuffer::dequeue(Addr tag, uint8_t* &data, Cycles &lat)
     return satisfied;
 }
         
+bool 
+FIFOBuffer::dequeue(Addr &tag, uint8_t* &data)
+{
+    if (pfb.empty()) {
+        DPRINTF(FIFOBuffer, "Request addr: %#x failed, buffer empty.\n", tag);
+        return false;
+    }
+
+    BufferEntry* be = &pfb.front();
+    if (be->state != BufferEntry::VALID) {
+        statsFIFO.dequeueOutstanding++;
+        DPRINTF(FIFOBuffer, "Request addr: %#x is still being fetched.\n",
+            tag);
+        return false;
+    } 
+    
+    tag = be->tag;
+    std::memcpy(data, be->data, dataSize);
+    pfb.pop_front();
+
+    statsFIFO.dequeueHits++;
+    DPRINTF(FIFOBuffer, "Request addr: %#x is succesfully dequeued from buffer.\n", 
+        tag);
+
+    return true;
+}
+
 void 
 FIFOBuffer::flush()
 {

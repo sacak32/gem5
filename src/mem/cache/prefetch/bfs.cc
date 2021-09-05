@@ -22,7 +22,7 @@ namespace Prefetcher {
 BFS::BFS(const BFSPrefetcherParams &p)
   : Queued(p), byteOrder(p.sys->getGuestByteOrder()),
     prefetchDistance(p.prefetch_distance),
-    buffer(p.fifo_buffer)
+    visitedBuffer(p.vertex_buffer), edgeBuffer(p.edge_buffer)
 {
     curVisitAddr = 0;
     curEdgeStart = 0;
@@ -149,7 +149,10 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
             else
                 DPRINTF(BFS, "VISIT ADDR BOUNDARY PASSED!!!\n");
         }*/
-        buffer->flush();
+
+        // Flush the buffers
+        edgeBuffer->flush();
+        visitedBuffer->flush();
     }
     
     if (baseVertexAddress <= addr && addr < endVertexAddress) {
@@ -170,6 +173,8 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
         while ( i <= prefetchDistance * EDGE_DATA_SIZE / blkSize && cur < curEdgeEnd )
         {
             addresses.push_back(AddrPriority(cur,0));
+            edgeBuffer->enqueue(cur);
+
             cur += blkSize;
             i++;
         }
@@ -180,28 +185,34 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
         pfi.getCmd() == MemCmd::HardPFReq)  {
         DPRINTF(BFS, "Edge addr found: %#x offset: %lu\n", addr, 
                (addr - baseEdgeAddress) / EDGE_DATA_SIZE);
+        
+        // Set edge buffer data first.
+        edgeBuffer->setData(addr, pfi.getData());
 
-        for (unsigned i = 0; i < blkSize / EDGE_DATA_SIZE; i++)
+        // While edge buffer has valid head entries, dequeue them and prefetch visited addresses
+        uint8_t* data = new uint8_t[blkSize];
+        Addr addr;
+        while (edgeBuffer->dequeue(addr, data))
         {
-            Addr cur = addr + i*EDGE_DATA_SIZE;
-            if (curEdgeStart <= cur && cur < curEdgeEnd)
+            for (unsigned i = 0; i < blkSize / EDGE_DATA_SIZE; i++)
             {
-                // HERE IM ASSUMING THAT EDGE_DATA_SIZE = 8                
-                // Prefetch visited addresses 
-                uint64_t offset = pfi.get<uint64_t>(byteOrder, EDGE_DATA_SIZE*i);
-                Addr newAddr = baseVisitedAddress + VISITED_DATA_SIZE * offset;
-                addresses.push_back(AddrPriority(newAddr,0));
-                buffer->enqueue(newAddr);
-            }
-            // If we are prefetching the last visited addr, prefetch the next visit addr
-            /*
-            if (cur == curEdgeEnd - EDGE_DATA_SIZE)
-            {
-                Addr newAddr = curVisitAddr + VISIT_DATA_SIZE;
-                if (newAddr < endVisitAddress)
+                Addr cur = addr + i*EDGE_DATA_SIZE;
+                if (curEdgeStart <= cur && cur < curEdgeEnd)
+                {
+                    // HERE IM ASSUMING THAT EDGE_DATA_SIZE = 8                
+                    // Prefetch visited addresses 
+                    uint64_t offset = byteOrder == ByteOrder::big ? 
+                                      betoh(*(uint64_t*)(data+EDGE_DATA_SIZE*i)) :
+                                      letoh(*(uint64_t*)(data+EDGE_DATA_SIZE*i));
+
+                    Addr newAddr = baseVisitedAddress + VISITED_DATA_SIZE * offset;
                     addresses.push_back(AddrPriority(newAddr,0));
-            }*/
+                    visitedBuffer->enqueue(newAddr);
+                }
+            }
         }
+        
+        delete data;
     }        
     
     // if the edge address is loaded, prefetch the neccesary edge block
@@ -220,7 +231,7 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
     if (baseVisitedAddress <= addr && addr < endVisitedAddress) {
         assert(pfi.getSize() == sizeof(uint64_t));
         uint64_t data = pfi.get<uint64_t>(byteOrder);
-        buffer->setData(addr, pfi.getData());
+        visitedBuffer->setData(addr, pfi.getData());
         DPRINTF(BFS, "Visited addr found: %#x offset: %lu data: %lu\n", addr,
                 (addr - baseVisitedAddress) / VISITED_DATA_SIZE, data);
     }
@@ -244,14 +255,14 @@ BFS::trySatisfyAccess(PacketPtr &pkt, Cycles &lat)
         return false;
     
     Addr vaddr = pkt->req->getVaddr();
-    
-    // FIFO Buffer must only have visited data
+   
+    // We are only checking visited buffer
     if (baseVisitedAddress > vaddr || vaddr >= endVisitedAddress)
         return false;
 
     // Try request 
     uint8_t* data = new uint8_t[VISITED_DATA_SIZE];
-    bool satisfied = buffer->dequeue(vaddr, data, lat);
+    bool satisfied = visitedBuffer->dequeue(vaddr, data, lat);
 
     if (!satisfied)
         return false;

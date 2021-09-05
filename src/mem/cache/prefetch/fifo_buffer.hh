@@ -57,8 +57,9 @@ class FIFOBuffer : public SimObject {
 
     using iterator = std::list<BufferEntry>::iterator;
 
-    const unsigned size;
+    const unsigned bufferSize;
     const unsigned waitingSize;
+    const unsigned dataSize;
     const Cycles latency;
 
   struct FIFOStats : public Stats::Group
@@ -73,10 +74,20 @@ class FIFOBuffer : public SimObject {
   public:
     FIFOBuffer(const FIFOBufferParams &p);
     ~FIFOBuffer() = default;
-   
+
+   /* Enqueue the address to the end of the queue */
    bool enqueue(Addr tag);
+
+   /* Set data of the buffer entry with matching tag */
    bool setData(Addr tag, uint8_t* data);
+
+   /* If the head has the address tag, and head is VALID, return the data */
    bool dequeue(Addr tag, uint8_t* &data, Cycles &lat);
+
+   /* If head is VALID, return the tag and data */
+   bool dequeue(Addr &tag, uint8_t* &data);
+
+   /* flush the buffer */
    void flush();
 };
 

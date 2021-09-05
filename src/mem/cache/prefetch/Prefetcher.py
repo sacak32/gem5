@@ -154,9 +154,10 @@ class FIFOBuffer(SimObject):
     cxx_class = 'Prefetcher::FIFOBuffer'
     cxx_header = "mem/cache/prefetch/fifo_buffer.hh"
 
-    size = Param.Unsigned(100, "FIFO Buffer size.")
-    latency = Param.Cycles(1, "FIFO Buffer latency.")
+    buffer_size = Param.Unsigned(100, "FIFO Buffer size.")
     waiting_size = Param.Unsigned(100, "FIFO waiting buffer size.") 
+    data_size = Param.Unsigned("Size of each data in the buffer.")
+    latency = Param.Cycles(1, "FIFO Buffer latency.")
 
 class BFSPrefetcher(QueuedPrefetcher):
     type = 'BFSPrefetcher'
@@ -169,7 +170,10 @@ class BFSPrefetcher(QueuedPrefetcher):
     queue_size = 200
     max_prefetch_requests_with_pending_translation = 200
     prefetch_distance = Param.Unsigned(64, "Prefetch distance")
-    fifo_buffer = Param.FIFOBuffer(FIFOBuffer(), "FIFO buffer of the prefetcher")
+    visited_buffer = Param.FIFOBuffer(FIFOBuffer(data_size = 8, buffer_size = 100),
+                                     "FIFO buffer of the prefetcher")
+    edge_buffer = Param.FIFOBuffer(FIFOBuffer(data_size = 64, buffer_size = 10),
+                                   "FIFO buffer of the prefetcher")
     
 class StridePrefetcher(QueuedPrefetcher):
     type = 'StridePrefetcher'
