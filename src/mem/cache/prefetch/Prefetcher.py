@@ -149,6 +149,15 @@ class StridePrefetcherHashedSetAssociative(SetAssociative):
     cxx_class = 'Prefetcher::StridePrefetcherHashedSetAssociative'
     cxx_header = "mem/cache/prefetch/stride.hh"
 
+class FIFOBuffer(SimObject):
+    type = 'FIFOBuffer'
+    cxx_class = 'Prefetcher::FIFOBuffer'
+    cxx_header = "mem/cache/prefetch/fifo_buffer.hh"
+
+    size = Param.Unsigned(100, "FIFO Buffer size.")
+    latency = Param.Cycles(1, "FIFO Buffer latency.")
+    waiting_size = Param.Unsigned(100, "FIFO waiting buffer size.") 
+
 class BFSPrefetcher(QueuedPrefetcher):
     type = 'BFSPrefetcher'
     cxx_class = 'Prefetcher::BFS'
@@ -160,10 +169,8 @@ class BFSPrefetcher(QueuedPrefetcher):
     queue_size = 200
     max_prefetch_requests_with_pending_translation = 200
     prefetch_distance = Param.Unsigned(64, "Prefetch distance")
-    pfb_size = Param.Unsigned(100, "FIFO Buffer size.")
-    pfb_latency = Param.Cycles(1, "FIFO Buffer latency.")
-    pfb_waiting_size = Param.Unsigned(100, "FIFO waiting buffer size.") 
-
+    fifo_buffer = Param.FIFOBuffer(FIFOBuffer(), "FIFO buffer of the prefetcher")
+    
 class StridePrefetcher(QueuedPrefetcher):
     type = 'StridePrefetcher'
     cxx_class = 'Prefetcher::Stride'

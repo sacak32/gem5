@@ -48,8 +48,7 @@ class BFS : public Queued
 private:
   const ByteOrder byteOrder;
   const unsigned prefetchDistance;
-  FIFOBuffer buffer;
-  Cycles bufferLatency;
+  FIFOBuffer* buffer;
 
   Addr curVisitAddr;
   Addr curEdgeStart;

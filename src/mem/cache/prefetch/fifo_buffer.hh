@@ -29,7 +29,13 @@
 #ifndef __CACHE_PREFETCH_FIFO_BUFFER_HH__
 #define __CACHE_PREFETCH_FIFO_BUFFER_HH__
 
-class FIFOBuffer {
+#include "mem/cache/prefetch/base.hh"
+
+struct FIFOBufferParams;
+
+namespace Prefetcher {
+
+class FIFOBuffer : public SimObject {
   private:
     struct BufferEntry
     {
@@ -51,17 +57,29 @@ class FIFOBuffer {
 
     using iterator = std::list<BufferEntry>::iterator;
 
-    const unsigned pfbSize;
-    const unsigned pfbWaitingSize;
+    const unsigned size;
+    const unsigned waitingSize;
+    const Cycles latency;
+
+  struct FIFOStats : public Stats::Group
+  {
+      FIFOStats(Stats::Group *parent);
+      // STATS
+      Stats::Scalar dequeueHits;
+      Stats::Scalar dequeueMisses;
+      Stats::Scalar dequeueOutstanding;
+  } statsFIFO;
 
   public:
-    FIFOBuffer(unsigned ps, unsigned pws);
+    FIFOBuffer(const FIFOBufferParams &p);
     ~FIFOBuffer() = default;
    
    bool enqueue(Addr tag);
    bool setData(Addr tag, uint8_t* data);
-   bool dequeue(Addr tag, uint8_t* &data);
+   bool dequeue(Addr tag, uint8_t* &data, Cycles &lat);
    void flush();
 };
+
+} // namespace Prefetcher
 
 #endif //__CACHE_PREFETCH_FIFO_BUFFER_HH__

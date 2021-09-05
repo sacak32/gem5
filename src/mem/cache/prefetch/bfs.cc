@@ -5,7 +5,6 @@
  */
 
 #include "mem/cache/prefetch/bfs.hh"
-#include "mem/cache/prefetch/fifo_buffer_impl.hh"
 
 #include "mem/cache/base.hh"
 #include "debug/BFS.hh"
@@ -23,8 +22,7 @@ namespace Prefetcher {
 BFS::BFS(const BFSPrefetcherParams &p)
   : Queued(p), byteOrder(p.sys->getGuestByteOrder()),
     prefetchDistance(p.prefetch_distance),
-    buffer(p.pfb_size, p.pfb_waiting_size),
-    bufferLatency(p.pfb_latency)
+    buffer(p.fifo_buffer)
 {
     curVisitAddr = 0;
     curEdgeStart = 0;
@@ -151,7 +149,7 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
             else
                 DPRINTF(BFS, "VISIT ADDR BOUNDARY PASSED!!!\n");
         }*/
-        buffer.flush();
+        buffer->flush();
     }
     
     if (baseVertexAddress <= addr && addr < endVertexAddress) {
@@ -193,7 +191,7 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
                 uint64_t offset = pfi.get<uint64_t>(byteOrder, EDGE_DATA_SIZE*i);
                 Addr newAddr = baseVisitedAddress + VISITED_DATA_SIZE * offset;
                 addresses.push_back(AddrPriority(newAddr,0));
-                buffer.enqueue(newAddr);
+                buffer->enqueue(newAddr);
             }
             // If we are prefetching the last visited addr, prefetch the next visit addr
             /*
@@ -222,7 +220,7 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
     if (baseVisitedAddress <= addr && addr < endVisitedAddress) {
         assert(pfi.getSize() == sizeof(uint64_t));
         uint64_t data = pfi.get<uint64_t>(byteOrder);
-        buffer.setData(addr, pfi.getData());
+        buffer->setData(addr, pfi.getData());
         DPRINTF(BFS, "Visited addr found: %#x offset: %lu data: %lu\n", addr,
                 (addr - baseVisitedAddress) / VISITED_DATA_SIZE, data);
     }
@@ -253,14 +251,12 @@ BFS::trySatisfyAccess(PacketPtr &pkt, Cycles &lat)
 
     // Try request 
     uint8_t* data = new uint8_t[VISITED_DATA_SIZE];
-    bool satisfied = buffer.dequeue(vaddr, data);
+    bool satisfied = buffer->dequeue(vaddr, data, lat);
 
     if (!satisfied)
         return false;
 
     pkt->setData(data);
-    lat = bufferLatency;
-
     delete data;
     return true; 
 }
