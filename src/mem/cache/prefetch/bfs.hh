@@ -83,6 +83,8 @@ public:
   bool trySatisfyAccess(PacketPtr &pkt, Cycles &lat) override;
 
   unsigned getFetchSize(Addr addr) override;
+  
+  bool notAllocateOnCache(Addr addr) override;
 };
 
 } // namespace Prefetcher

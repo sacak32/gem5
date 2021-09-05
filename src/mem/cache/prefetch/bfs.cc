@@ -250,7 +250,9 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
     }
 
     // Print the visited address
-    if (baseVisitedAddress <= addr && addr < endVisitedAddress) {
+    if (baseVisitedAddress <= addr && addr < endVisitedAddress &&
+        pfi.getCmd() == MemCmd::HardPFReq) {
+
         assert(pfi.getSize() == sizeof(uint64_t));
         uint64_t data = pfi.get<uint64_t>(byteOrder);
 
@@ -311,6 +313,13 @@ BFS::getFetchSize(Addr addr)
     if (baseVisitedAddress <= addr && addr < endVisitedAddress)
         return 8;
     return 64;
+}
+
+bool
+BFS::notAllocateOnCache(Addr addr)
+{
+    // If we use fifo buffers, do not allocate visited prefetches on cache
+    return visitedBuffer && (baseVisitedAddress <= addr && addr < endVisitedAddress);
 }
 
 } // namespace Prefetcher

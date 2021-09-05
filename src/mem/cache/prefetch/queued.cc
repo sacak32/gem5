@@ -55,16 +55,19 @@ Queued::DeferredPacket::createPkt(Addr paddr, unsigned blk_size,
                                             bool tag_prefetch,
                                             Tick t) {
     /* Create a prefetch memory request */
-    unsigned fetch_size = owner->getFetchSize(pfInfo.getAddr());
+    Addr vaddr = pfInfo.getAddr();
+
+    unsigned fetch_size = owner->getFetchSize(vaddr);
     RequestPtr req = std::make_shared<Request>(paddr, fetch_size,
                                                 0, requestor_id);
-    req->setVaddr(pfInfo.getAddr());
+    req->setVaddr(vaddr);
     
     if (pfInfo.isSecure()) {
         req->setFlags(Request::SECURE);
     }
     req->taskId(ContextSwitchTaskId::Prefetcher);
     req->setContext(pfInfo.getContext());
+    req->setExtraData(owner->notAllocateOnCache(vaddr) ? 1 : 0);
 
     pkt = new Packet(req, MemCmd::HardPFReq);
     pkt->allocate();

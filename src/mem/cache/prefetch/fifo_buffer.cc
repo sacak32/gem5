@@ -63,7 +63,7 @@ FIFOBuffer::setData(Addr tag, uint8_t* data)
         return false;
     } 
        
-    assert(it->data == nullptr);
+    // assert(it->data == nullptr);
     it->data = new uint8_t[dataSize];
     
     std::memcpy(it->data, data, dataSize);

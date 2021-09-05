@@ -196,6 +196,11 @@ class Queued : public Base
         return blkSize;
     }
 
+    virtual bool notAllocateOnCache(Addr addr)
+    {
+        return 0;
+    }
+
     PacketPtr getPacket() override;
 
     Tick nextPrefetchReadyTime() const override
