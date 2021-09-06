@@ -103,10 +103,17 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
                             std::vector<AddrPriority> &addresses)
 
 {
-    if (!inSearch || pfi.isCacheMiss())
+    if (!inSearch)
         return;
 
     Addr addr = pfi.getAddr();
+
+    /* We usually only consider requests with a data, but edge load requests
+       are an exception */
+    if (pfi.isCacheMiss() && 
+        !(pfi.getCmd() == MemCmd::ReadReq &&
+          curEdgeStart <= addr && addr < curEdgeEnd))
+       return;
 
     if (pfi.getCmd() != MemCmd::HardPFReq && 
         !(baseVisitAddress <= addr && addr < endVisitAddress) &&
@@ -170,7 +177,7 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
 
         /* Now, we prefetch the whole blocks, from beginning of the edge array
            until the prefetch distance, if the array ends, we stop. */
-        int i = 0;
+        int i = curEdgeStart == blockAddress(curEdgeStart) ? 1 : 0;
         Addr cur = blockAddress(curEdgeStart);
         while ( i <= prefetchDistance * EDGE_DATA_SIZE / blkSize && cur < curEdgeEnd )
         {
@@ -235,7 +242,7 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
     
     // if the edge address is loaded, prefetch the neccesary edge block
     if (curEdgeStart <= addr && addr < curEdgeEnd && pfi.getSize() == EDGE_DATA_SIZE &&
-        pfi.getCmd() != MemCmd::HardPFReq && addr % blkSize == 0)
+        pfi.getCmd() == MemCmd::ReadReq && addr % blkSize == 0)
     {
         DPRINTF(BFS, "Edge load found: %#x offset: %lu\n", addr,
                (addr - baseEdgeAddress) / EDGE_DATA_SIZE);

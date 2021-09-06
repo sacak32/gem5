@@ -172,7 +172,7 @@ class BFSPrefetcher(QueuedPrefetcher):
     prefetch_distance = Param.Unsigned(64, "Prefetch distance")
     visited_buffer = Param.FIFOBuffer(FIFOBuffer(data_size = 8, buffer_size = 100),
                                      "FIFO buffer of the prefetcher")
-    edge_buffer = Param.FIFOBuffer(FIFOBuffer(data_size = 64, buffer_size = 10),
+    edge_buffer = Param.FIFOBuffer(FIFOBuffer(data_size = 64, buffer_size = 15),
                                    "FIFO buffer of the prefetcher")
     
 class StridePrefetcher(QueuedPrefetcher):
