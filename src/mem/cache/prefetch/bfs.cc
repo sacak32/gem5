@@ -24,9 +24,11 @@ BFS::BFS(const BFSPrefetcherParams &p)
     prefetchDistance(p.prefetch_distance),
     visitedBuffer(p.visited_buffer), edgeBuffer(p.edge_buffer)
 {
-    curVisitAddr = 0;
+    curVertexAddr = 0;
     curEdgeStart = 0;
     curEdgeEnd = 0;
+    
+    subfetch = false;
 }
 
 bool BFS::inSearch = false;
@@ -116,65 +118,51 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
        return;
 
     if (pfi.getCmd() != MemCmd::HardPFReq && 
-        !(baseVisitAddress <= addr && addr < endVisitAddress) &&
+        !(baseVertexAddress <= addr && addr < endVertexAddress) &&
         !(curEdgeStart <= addr && addr < curEdgeEnd))
        return;
     
-    // Prefetch with visit address
-    if (baseVisitAddress <= addr && addr < endVisitAddress) {
-        // Get visit data
-        assert(pfi.getSize() == sizeof(uint64_t));
-        uint64_t data = pfi.get<uint64_t>(byteOrder);
-        DPRINTF(BFS, "Visit addr found: %#x data: %lu\n", addr, data);
-
-        // Writes to visit queue should be ignored
-        if (data == 0) return;
-
-        /*
-        // If visit address is prefetched, prefetch the vertexes.
-        if (pfi.getCmd() == MemCmd::HardPFReq)
-        {*/
-            // prefetch vertex data from visit data
-            Addr newAddr = graph500csr ? 16*data : 8*data;
-            newAddr += baseVertexAddress;
-            DPRINTF(BFS, "Calculated vertex addr: %#x\n", newAddr);
-            addresses.push_back(AddrPriority(newAddr, 0));
-
-            curVisitAddr = addr;
-            curEdgeStart = 0;
-            curEdgeEnd = 0;
-        /*}
-        // Else prefetch next visit address
-        else 
-        {
-            Addr newAddr = addr + 8;
-            if (newAddr < endVisitAddress)
-            {
-                DPRINTF(BFS, "Calculated visit addr: %#x\n", newAddr);
-                addresses.push_back(AddrPriority(newAddr, 0));
-            }
-            else
-                DPRINTF(BFS, "VISIT ADDR BOUNDARY PASSED!!!\n");
-        }*/
-
-        // Flush the buffers
-        if (edgeBuffer && visitedBuffer) {
-            edgeBuffer->flush();
-            visitedBuffer->flush();
-        }
-    }
-    
-    if (baseVertexAddress <= addr && addr < endVertexAddress) {
+    if (baseVertexAddress <= addr && addr < endVertexAddress &&
+        pfi.getSize() == VERTEX_DATA_SIZE) {
         // Extract edge info
-        uint64_t startOffset = pfi.get<uint64_t>(byteOrder);
-        uint64_t endOffset = pfi.get<uint64_t>(byteOrder,8);
-        curEdgeStart = baseEdgeAddress + 8*startOffset;
-        curEdgeEnd = baseEdgeAddress + 8*endOffset;
-        assert(curEdgeEnd <= endEdgeAddress);
-        DPRINTF(BFS, "Vertex addr found: %#x curEdgeStart: %#x curEdgeEnd: %#x"
-                " startOffset: %ld endOffset: %ld\n", addr, curEdgeStart, curEdgeEnd,
-                startOffset, endOffset);
+        uint64_t offset = pfi.get<uint64_t>(byteOrder);
+        DPRINTF(BFS, "Vertex load addr: %#x offset: %lu data: %lu\n", addr, 
+                (addr - baseVertexAddress) / VERTEX_DATA_SIZE, offset);
+        
+        /* If we are currently prefetching for a vertex, 
+           cancel it and start capturing new pattern */
+        if (subfetch) {
+            subfetch = false;
 
+            curVertexAddr = addr;
+            curEdgeStart = baseEdgeAddress + EDGE_DATA_SIZE*offset;
+            curEdgeEnd = 0;
+
+            if (visitedBuffer && edgeBuffer) {
+                visitedBuffer->flush();
+                edgeBuffer->flush();
+            }
+
+            return;
+        }
+
+        /* If this address is not the next element in vertex array, 
+           capture it as the start offset */
+        if (addr != curVertexAddr + VERTEX_DATA_SIZE) {
+            curVertexAddr = addr;
+            curEdgeStart = baseEdgeAddress + EDGE_DATA_SIZE*offset;
+            return;
+        }
+
+        /* Else, pattern is captured, we can start prefetching the vertex 
+           traversal */
+        subfetch = true;
+        curEdgeEnd = baseEdgeAddress + EDGE_DATA_SIZE*offset;
+        if (curEdgeStart >= curEdgeEnd)
+            return;
+
+        DPRINTF(BFS, "Vertex load addr: %#x offset: %lu data: %lu\n", addr, 
+                (addr - baseVertexAddress) / VERTEX_DATA_SIZE, offset);
         /* Now, we prefetch the whole blocks, from beginning of the edge array
            until the prefetch distance, if the array ends, we stop. */
         int i = curEdgeStart == blockAddress(curEdgeStart) ? 1 : 0;

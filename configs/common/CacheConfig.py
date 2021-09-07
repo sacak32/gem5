@@ -136,10 +136,13 @@ def config_cache(options, system):
             # If we have a data prefetcher, connect TLB
             if options.l1d_hwp_type:
                 dcache.prefetcher.registerTLB(system.cpu[i].mmu.dtb)
+                dcache.prefetcher.edge_buffer = FIFOBuffer(data_size = 64, buffer_size = 15)
+                dcache.prefetcher.visited_buffer = FIFOBuffer(data_size = 8, buffer_size = 100)
+                #system.cpu[i].mmu.dtb.size = 1024
                 #dcache.prefetcher.edge_buffer = NULL
                 #dcache.prefetcher.visited_buffer = NULL
-                #system.cpu[i].mmu.dtb.size = 1024
-            
+
+                dcache.not_allocate_prefetch = True
             # If we have a walker cache specified, instantiate two
             # instances here
             if walk_cache_class:

@@ -51,9 +51,11 @@ private:
   FIFOBuffer* visitedBuffer;
   FIFOBuffer* edgeBuffer;
 
-  Addr curVisitAddr;
+  Addr curVertexAddr;
   Addr curEdgeStart;
   Addr curEdgeEnd;
+
+  bool subfetch;
 
 public:
   static Addr baseVertexAddress;
