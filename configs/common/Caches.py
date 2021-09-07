@@ -62,7 +62,6 @@ class L1_ICache(L1Cache):
     
 class L1_DCache(L1Cache):
     prefetch_on_access = True
-    not_allocate_prefetch = True
 
 class L2Cache(Cache):
     assoc = 8 

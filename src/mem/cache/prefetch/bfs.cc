@@ -101,40 +101,36 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
     if (!inSearch)
         return;
 
-    if (pfi.isCacheMiss()) {
+    /*if (pfi.isCacheMiss()) {
         DPRINTF(BFS, "Whoops we have a cache miss.\n");
         return;
-    }
+    }*/
+
+    if (pfi.getSize() != sizeof(uint64_t)) 
+        return;
 
     Addr addr = pfi.getAddr();
+    uint64_t data = pfi.isCacheMiss() ? 29 : pfi.get<uint64_t>(byteOrder);
 
     if (baseVisitAddress <= addr && addr < endVisitAddress) {
-        assert(pfi.getSize() == sizeof(uint64_t));
-        uint64_t data = pfi.get<uint64_t>(byteOrder);
         DPRINTF(BFS, "Visit %s addr: %#x offset: %lu data: %lu\n",
                 pfi.getCmd().toString(), addr,
                 (addr - baseVisitAddress) / VISIT_DATA_SIZE, data);
     }
     
     if (baseVertexAddress <= addr && addr < endVertexAddress) {
-        assert(pfi.getSize() == sizeof(uint64_t));
-        uint64_t data = pfi.get<uint64_t>(byteOrder);
         DPRINTF(BFS, "Vertex %s addr: %#x offset: %lu data: %lu\n",
                 pfi.getCmd().toString(), addr,
                 (addr - baseVertexAddress) / VERTEX_DATA_SIZE, data);
     }
     
     if (baseEdgeAddress <= addr && addr < endEdgeAddress) {
-        assert(pfi.getSize() == sizeof(uint64_t));
-        uint64_t data = pfi.get<uint64_t>(byteOrder);
         DPRINTF(BFS, "Edge %s addr: %#x offset: %lu data: %lu\n",
                 pfi.getCmd().toString(), addr,
                 (addr - baseEdgeAddress) / EDGE_DATA_SIZE, data);
     }
 
     if (baseVisitedAddress <= addr && addr < endVisitedAddress) {
-        assert(pfi.getSize() == sizeof(uint64_t));
-        uint64_t data = pfi.get<uint64_t>(byteOrder);
         DPRINTF(BFS, "Visited %s addr: %#x offset: %lu data: %lu\n",
                 pfi.getCmd().toString(), addr,
                 (addr - baseVisitedAddress) / VISITED_DATA_SIZE, data);
@@ -144,7 +140,7 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
 void
 BFS::notifyFill(const PacketPtr &pkt)
 {
-    probeNotify(pkt, false);
+    // probeNotify(pkt, false);
 }
 
 } // namespace Prefetcher
