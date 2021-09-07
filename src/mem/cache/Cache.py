@@ -148,6 +148,9 @@ class BaseCache(ClockedObject):
     # data cache.
     write_allocator = Param.WriteAllocator(NULL, "Write allocator")
 
+    not_allocate_prefetch = Param.Bool(False, "I set it true for L1 Dcache not to"
+                                        "allocate some prefetches")
+
 class Cache(BaseCache):
     type = 'Cache'
     cxx_header = 'mem/cache/cache.hh'

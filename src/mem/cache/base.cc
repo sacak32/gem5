@@ -74,9 +74,10 @@ BaseCache::CacheResponsePort::CacheResponsePort(const std::string &_name,
 }
 
 BaseCache::BaseCache(const BaseCacheParams &p, unsigned blk_size)
-    : ClockedObject(p),
+    : ClockedObject(p), 
       cpuSidePort (p.name + ".cpu_side_port", this, "CpuSidePort"),
       memSidePort(p.name + ".mem_side_port", this, "MemSidePort"),
+      notAllocatePrefetch(p.not_allocate_prefetch),
       mshrQueue("MSHRs", p.mshrs, 0, p.demand_mshr_reserve), // see below
       writeBuffer("write buffer", p.write_buffers, p.mshrs), // see below
       tags(p.tags),

@@ -331,6 +331,7 @@ class BaseCache : public ClockedObject
     MemSidePort memSidePort;
 
   protected:
+    bool notAllocatePrefetch;
 
     /** Miss status registers */
     MSHRQueue mshrQueue;
@@ -1160,6 +1161,7 @@ class BaseCache : public ClockedObject
     MSHR *allocateMissBuffer(PacketPtr pkt, Tick time, bool sched_send = true)
     {
         bool isNotAllocate = pkt->req->extraDataValid() ? (bool)pkt->req->getExtraData() : false;
+        isNotAllocate = isNotAllocate && notAllocatePrefetch;
         MSHR *mshr = mshrQueue.allocate(pkt->getBlockAddr(blkSize), blkSize,
                                         pkt, time, order++,
                                         allocOnFill(pkt->cmd) && !isNotAllocate);
