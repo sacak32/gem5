@@ -136,6 +136,7 @@ def config_cache(options, system):
             # If we have a data prefetcher, connect TLB
             if options.l1d_hwp_type:
                 dcache.prefetcher.registerTLB(system.cpu[i].mmu.dtb)
+                dcache.prefetcher.on_write = True
                 #dcache.prefetcher.edge_buffer = NULL
                 #dcache.prefetcher.visited_buffer = NULL
                 #system.cpu[i].mmu.dtb.size = 1024

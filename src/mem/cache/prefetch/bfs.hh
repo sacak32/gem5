@@ -47,13 +47,6 @@ class BFS : public Queued
 {
 private:
   const ByteOrder byteOrder;
-  const unsigned prefetchDistance;
-  FIFOBuffer* visitedBuffer;
-  FIFOBuffer* edgeBuffer;
-
-  Addr curVisitAddr;
-  Addr curEdgeStart;
-  Addr curEdgeEnd;
 
 public:
   static Addr baseVertexAddress;
@@ -77,14 +70,8 @@ public:
                     
   static void setup(uint64_t id, uint64_t start,
                       uint64_t end, uint64_t element_size);
-  
+
   void notifyFill(const PacketPtr &pkt) override;
-
-  bool trySatisfyAccess(PacketPtr &pkt, Cycles &lat) override;
-
-  unsigned getFetchSize(Addr addr) override;
-  
-  bool notAllocateOnCache(Addr addr) override;
 };
 
 } // namespace Prefetcher
