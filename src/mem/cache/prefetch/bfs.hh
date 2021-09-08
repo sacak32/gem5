@@ -58,8 +58,12 @@ public:
   static Addr baseVisitedAddress;
   static Addr endVisitedAddress;
 
+  static unsigned visitDataSize;
+  static unsigned vertexDataSize;
+  static unsigned edgeDataSize;
+  static unsigned visitedDataSize;
+
   static bool inSearch;
-  static uint64_t size_of_visited_items;
 
   BFS(const BFSPrefetcherParams &p);
   ~BFS() = default;
