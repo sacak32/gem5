@@ -71,7 +71,7 @@ class L2Cache(Cache):
     mshrs = 32
     tgts_per_mshr = 12
     write_buffers = 8
-    size = '1MB'
+    size = '2MB'
 
 class IOCache(Cache):
     assoc = 8

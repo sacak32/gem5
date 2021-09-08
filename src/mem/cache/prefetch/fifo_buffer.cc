@@ -85,23 +85,25 @@ FIFOBuffer::dequeue(Addr tag, uint8_t* &data, Cycles &lat)
     bool satisfied = false;
     if (be->tag != tag) {
         statsFIFO.dequeueMisses++;
+        //flush(); // Lets use this one and see what happens
         DPRINTF(FIFOBuffer, "Request addr: %#x not found in the head of buffer.\n",
             tag);
     } else if (be->state != BufferEntry::VALID) {
         statsFIFO.dequeueOutstanding++;
         DPRINTF(FIFOBuffer, "Request addr: %#x is still being fetched.\n",
             tag);
+        pfb.pop_front();
     } else {
         std::memcpy(data, be->data, dataSize);
         lat = latency;
         satisfied = true; 
+        pfb.pop_front();
 
         statsFIFO.dequeueHits++;
         DPRINTF(FIFOBuffer, "Request addr: %#x is succesfully dequeued from buffer.\n", 
             tag);
     }
 
-    pfb.pop_front();
     return satisfied;
 }
         

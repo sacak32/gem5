@@ -10,13 +10,6 @@
 #include "debug/BFS.hh"
 #include "params/BFSPrefetcher.hh"
 
-#define VISIT_DATA_SIZE 8
-#define VERTEX_DATA_SIZE 8
-#define EDGE_DATA_SIZE 8
-#define VISITED_DATA_SIZE 8
-
-int graph500csr = 1;
-
 namespace Prefetcher {
 
 BFS::BFS(const BFSPrefetcherParams &p)
@@ -31,7 +24,6 @@ BFS::BFS(const BFSPrefetcherParams &p)
     subfetch = false;
 }
 
-bool BFS::inSearch = false;
 Addr BFS::baseVertexAddress = 0;
 Addr BFS::endVertexAddress = 0;
 Addr BFS::baseEdgeAddress = 0;
@@ -41,31 +33,32 @@ Addr BFS::endVisitAddress = 0;
 Addr BFS::baseVisitedAddress = 0;
 Addr BFS::endVisitedAddress = 0;
 
-uint64_t BFS::size_of_visited_items = 0;
+unsigned BFS::visitDataSize = 0;
+unsigned BFS::vertexDataSize = 0;
+unsigned BFS::edgeDataSize = 0;
+unsigned BFS::visitedDataSize = 0;
+
+bool BFS::inSearch = false;
+bool BFS::graph500 = false;
 
 void BFS::setup(uint64_t id, uint64_t start, uint64_t end, uint64_t size)
 {
     Addr startAddr = (Addr) start;
     Addr endAddr = (Addr) end;
-    printf("Inside setup, id: %lu start: %#lx end: %#lx\n", id, startAddr, endAddr); 
+    printf("Inside setup, id: %lu start: %#lx end: %#lx size:%lu\n", id, startAddr, endAddr, size); 
 
     if (id == 0)
     {
-        //work list
-
         BFS::baseVisitAddress = startAddr;
         BFS::endVisitAddress = endAddr;
+        BFS::visitDataSize = size;
     }
 
     if (id == 1)
     {
-        //vertex list
-        if (size == 4)
-            graph500csr = 0;
-        else
-            graph500csr = 1;
         BFS::baseVertexAddress = startAddr;
         BFS::endVertexAddress = endAddr;
+        BFS::vertexDataSize = size;
     }
 
     if (id == 2)
@@ -73,31 +66,16 @@ void BFS::setup(uint64_t id, uint64_t start, uint64_t end, uint64_t size)
         BFS::inSearch = true;
         BFS::baseEdgeAddress = startAddr;
         BFS::endEdgeAddress = endAddr;
+        BFS::edgeDataSize = size;
     }
 
     if (id == 3)
     {
         BFS::baseVisitedAddress = startAddr;
         BFS::endVisitedAddress = endAddr;
-
-        if (graph500csr)
-        {
-            if (BFS::endVisitedAddress != BFS::baseVisitedAddress)
-                size_of_visited_items = ((BFS::endVertexAddress + 8 - BFS::baseVertexAddress) / 2) / (BFS::endVisitedAddress - BFS::baseVisitedAddress);
-        }
-        else
-        {
-
-            if (BFS::endVisitedAddress != BFS::baseVisitedAddress)
-                size_of_visited_items = (BFS::endVertexAddress - BFS::baseVertexAddress) / (BFS::endVisitedAddress - BFS::baseVisitedAddress);
-        }
-
-        if (size_of_visited_items != 0)
-            size_of_visited_items = 64 / size_of_visited_items;
-        else
-            size_of_visited_items = 0;
-
-        printf("size of visited items: %ld\n", size_of_visited_items);
+        BFS::visitedDataSize = size;
+        
+        BFS::graph500 = size == 8;
     }
 }
 
@@ -122,12 +100,31 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
         !(curEdgeStart <= addr && addr < curEdgeEnd))
        return;
     
+    // Get prefetched data
+    uint64_t data = 0;
+    if (!pfi.isCacheMiss()) {
+        switch(pfi.getSize()) {
+            case sizeof(uint8_t):
+                data = pfi.get<uint8_t>(byteOrder);
+                break;
+            case sizeof(uint16_t):
+                data = pfi.get<uint16_t>(byteOrder);
+                break;
+            case sizeof(uint32_t):
+                data = pfi.get<uint32_t>(byteOrder);
+                break;
+            case sizeof(uint64_t):
+                data = pfi.get<uint64_t>(byteOrder);
+                break;
+            default:
+                break;
+        }
+    }
+
     if (baseVertexAddress <= addr && addr < endVertexAddress &&
-        pfi.getSize() == VERTEX_DATA_SIZE) {
-        // Extract edge info
-        uint64_t offset = pfi.get<uint64_t>(byteOrder);
-        DPRINTF(BFS, "Vertex load addr: %#x offset: %lu data: %lu\n", addr, 
-                (addr - baseVertexAddress) / VERTEX_DATA_SIZE, offset);
+        pfi.getSize() == vertexDataSize) {
+        DPRINTF(BFS, "Vertex load addr: %#x offset: %lu data: %#x\n", addr, 
+                (addr - baseVertexAddress) / vertexDataSize, (Addr)data);
         
         /* If we are currently prefetching for a vertex, 
            cancel it and start capturing new pattern */
@@ -135,39 +132,47 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
             subfetch = false;
 
             curVertexAddr = addr;
-            curEdgeStart = baseEdgeAddress + EDGE_DATA_SIZE*offset;
+            curEdgeStart = data;
             curEdgeEnd = 0;
 
-            if (visitedBuffer && edgeBuffer) {
+            if (visitedBuffer) 
                 visitedBuffer->flush();
+            if (edgeBuffer)
                 edgeBuffer->flush();
-            }
 
             return;
         }
 
-        /* If this address is not the next element in vertex array, 
-           capture it as the start offset */
-        if (addr != curVertexAddr + VERTEX_DATA_SIZE) {
+        if (addr == curVertexAddr + vertexDataSize) {
+            curEdgeEnd = data;
+            subfetch = true;
+        } else if (addr == curVertexAddr - vertexDataSize) {
+            curEdgeEnd = curEdgeStart;
+            curEdgeStart = data;
+            subfetch = true;
+        } else {
             curVertexAddr = addr;
-            curEdgeStart = baseEdgeAddress + EDGE_DATA_SIZE*offset;
+            curEdgeStart = data;
             return;
         }
 
-        /* Else, pattern is captured, we can start prefetching the vertex 
-           traversal */
-        subfetch = true;
-        curEdgeEnd = baseEdgeAddress + EDGE_DATA_SIZE*offset;
+        // graph 500 keeps indexes instead of direct pointers
+        if (graph500) {
+            curEdgeStart = baseEdgeAddress + edgeDataSize * curEdgeStart;
+            curEdgeEnd = baseEdgeAddress + edgeDataSize * curEdgeEnd;
+        }
+        
+        // lets not prefetch first 2 vertexes
+        // curEdgeStart += 2*edgeDataSize;
+
         if (curEdgeStart >= curEdgeEnd)
             return;
-
-        DPRINTF(BFS, "Vertex load addr: %#x offset: %lu data: %lu\n", addr, 
-                (addr - baseVertexAddress) / VERTEX_DATA_SIZE, offset);
+        
         /* Now, we prefetch the whole blocks, from beginning of the edge array
            until the prefetch distance, if the array ends, we stop. */
         int i = curEdgeStart == blockAddress(curEdgeStart) ? 1 : 0;
         Addr cur = blockAddress(curEdgeStart);
-        while ( i <= prefetchDistance * EDGE_DATA_SIZE / blkSize && cur < curEdgeEnd )
+        while ( i <= prefetchDistance * edgeDataSize / blkSize && cur < curEdgeEnd )
         {
             addresses.push_back(AddrPriority(cur,0));
 
@@ -183,7 +188,7 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
     if (blockAddress(baseEdgeAddress) <= addr && addr < endEdgeAddress &&
         pfi.getCmd() == MemCmd::HardPFReq)  {
         DPRINTF(BFS, "Edge addr found: %#x offset: %lu\n", addr, 
-               (addr - baseEdgeAddress) / EDGE_DATA_SIZE);
+               (addr - baseEdgeAddress) / edgeDataSize);
         
         if (edgeBuffer) {
             // Set edge buffer data first.
@@ -194,34 +199,36 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
             Addr addr;
             while (edgeBuffer->dequeue(addr, data))
             {
-                for (unsigned i = 0; i < blkSize / EDGE_DATA_SIZE; i++)
+                for (unsigned i = 0; i < blkSize / edgeDataSize; i++)
                 {
-                    Addr cur = addr + i*EDGE_DATA_SIZE;
+                    Addr cur = addr + i*edgeDataSize;
                     if (curEdgeStart <= cur && cur < curEdgeEnd)
                     {
-                        // HERE IM ASSUMING THAT EDGE_DATA_SIZE = 8                
+                        // HERE IM ASSUMING THAT edge data < 2^32
                         // Prefetch visited addresses 
-                        uint64_t offset = byteOrder == ByteOrder::big ? 
-                                          betoh(*(uint64_t*)(data+EDGE_DATA_SIZE*i)) :
-                                          letoh(*(uint64_t*)(data+EDGE_DATA_SIZE*i));
+                        uint32_t offset = byteOrder == ByteOrder::big ? 
+                                          betoh(*(uint32_t*)(data+edgeDataSize*i)) :
+                                          letoh(*(uint32_t*)(data+edgeDataSize*i));
     
-                        Addr newAddr = baseVisitedAddress + VISITED_DATA_SIZE * offset;
+                        Addr newAddr = baseVisitedAddress + visitedDataSize * offset;
                         addresses.push_back(AddrPriority(newAddr,0));
-                        visitedBuffer->enqueue(newAddr);
+
+                        if (visitedBuffer)
+                            visitedBuffer->enqueue(newAddr);
                     }
                 }
             }
             delete data;
         } else {
-            for (unsigned i = 0; i < blkSize / EDGE_DATA_SIZE; i++)
+            for (unsigned i = 0; i < blkSize / edgeDataSize; i++)
             {
-                Addr cur = addr + i*EDGE_DATA_SIZE;
+                Addr cur = addr + i*edgeDataSize;
                 if (curEdgeStart <= cur && cur < curEdgeEnd)
                 {
-                    // HERE IM ASSUMING THAT EDGE_DATA_SIZE = 8                
+                    // HERE IM ASSUMING THAT edge data < 2^32
                     // Prefetch visited addresses 
-                    uint64_t offset = pfi.get<uint64_t>(byteOrder, EDGE_DATA_SIZE*i);
-                    Addr newAddr = baseVisitedAddress + VISITED_DATA_SIZE * offset;
+                    uint32_t offset = pfi.get<uint32_t>(byteOrder, edgeDataSize*i);
+                    Addr newAddr = baseVisitedAddress + visitedDataSize * offset;
                     addresses.push_back(AddrPriority(newAddr,0));
                 }
             }
@@ -229,13 +236,13 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
     }        
     
     // if the edge address is loaded, prefetch the neccesary edge block
-    if (curEdgeStart <= addr && addr < curEdgeEnd && pfi.getSize() == EDGE_DATA_SIZE &&
+    if (curEdgeStart <= addr && addr < curEdgeEnd && pfi.getSize() == edgeDataSize &&
         pfi.getCmd() == MemCmd::ReadReq && addr % blkSize == 0)
     {
         DPRINTF(BFS, "Edge load found: %#x offset: %lu\n", addr,
-               (addr - baseEdgeAddress) / EDGE_DATA_SIZE);
+               (addr - baseEdgeAddress) / edgeDataSize);
 
-        Addr newAddr = addr + blkSize * prefetchDistance / EDGE_DATA_SIZE;
+        Addr newAddr = addr + prefetchDistance * edgeDataSize; 
         if (newAddr < curEdgeEnd) {
             addresses.push_back(AddrPriority(newAddr,0));
 
@@ -248,14 +255,11 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
     if (baseVisitedAddress <= addr && addr < endVisitedAddress &&
         pfi.getCmd() == MemCmd::HardPFReq) {
 
-        assert(pfi.getSize() == sizeof(uint64_t));
-        uint64_t data = pfi.get<uint64_t>(byteOrder);
-
         if (visitedBuffer)
             visitedBuffer->setData(addr, pfi.getData());
 
         DPRINTF(BFS, "Visited addr found: %#x offset: %lu data: %lu\n", addr,
-                (addr - baseVisitedAddress) / VISITED_DATA_SIZE, data);
+                (addr - baseVisitedAddress) / visitedDataSize, data);
     }
 }        
 
@@ -283,7 +287,7 @@ BFS::trySatisfyAccess(PacketPtr &pkt, Cycles &lat)
         return false;
 
     // Try request 
-    uint8_t* data = new uint8_t[VISITED_DATA_SIZE];
+    uint8_t* data = new uint8_t[visitedDataSize];
     bool satisfied = visitedBuffer->dequeue(vaddr, data, lat);
 
     if (!satisfied)
@@ -298,16 +302,16 @@ unsigned
 BFS::getFetchSize(Addr addr)
 {
     if (baseVisitAddress <= addr && addr < endVisitAddress)
-        return 8;
+        return visitDataSize;
     if (baseVertexAddress <= addr && addr < endVertexAddress)
-        return 16;
+        return vertexDataSize;
     /* Note: Let's hope block address of baseEdgeAddress is not in one of the 
        other boundaries */   
     if (blockAddress(baseEdgeAddress) <= addr && addr < endEdgeAddress)
-        return 64;
+        return blkSize;
     if (baseVisitedAddress <= addr && addr < endVisitedAddress)
-        return 8;
-    return 64;
+        return visitedDataSize;
+    return blkSize;
 }
 
 bool

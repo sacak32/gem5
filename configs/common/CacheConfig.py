@@ -133,16 +133,20 @@ def config_cache(options, system):
             icache = icache_class(**_get_cache_opts('l1i', options))
             dcache = dcache_class(**_get_cache_opts('l1d', options))
 
-            # If we have a data prefetcher, connect TLB
-            if options.l1d_hwp_type:
+            # Prefetcher config
+            pft = options.prefetch_type
+            if pft and pft != "none": 
+                dcache.prefetcher = BFSPrefetcher()
                 dcache.prefetcher.registerTLB(system.cpu[i].mmu.dtb)
-                dcache.prefetcher.edge_buffer = FIFOBuffer(data_size = 64, buffer_size = 15)
-                dcache.prefetcher.visited_buffer = FIFOBuffer(data_size = 8, buffer_size = 100)
-                #system.cpu[i].mmu.dtb.size = 1024
-                #dcache.prefetcher.edge_buffer = NULL
-                #dcache.prefetcher.visited_buffer = NULL
+                dcache.prefetcher.prefetch_distance = options.prefetch_distance
 
-                dcache.not_allocate_prefetch = True
+                if pft != "base":
+                    dcache.prefetcher.edge_buffer = FIFOBuffer(data_size = 64, buffer_size = 40)
+                    dcache.prefetcher.visited_buffer = FIFOBuffer(data_size = 8, buffer_size = 320)
+
+                    if pft == "noalloc":
+                        dcache.not_allocate_prefetch = True
+
             # If we have a walker cache specified, instantiate two
             # instances here
             if walk_cache_class:
