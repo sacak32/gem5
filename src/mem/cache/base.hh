@@ -74,6 +74,7 @@
 #include "sim/serialize.hh"
 #include "sim/sim_exit.hh"
 #include "sim/system.hh"
+#include "mem/cache/prefetch/bfs.hh"
 
 namespace Prefetcher {
     class Base;
@@ -998,6 +999,8 @@ class BaseCache : public ClockedObject
         /** Number of misses per thread for each type of command.
             @sa Packet::Command */
         Stats::Vector misses;
+        Stats::Scalar vertexHits;
+        Stats::Scalar vertexMisses;
         /**
          * Total number of cycles per thread/command spent waiting for a miss.
          * Used to calculate the average miss latency.
@@ -1044,10 +1047,13 @@ class BaseCache : public ClockedObject
         /** Number of hit for all accesses. */
         Stats::Formula overallHits;
 
+        Stats::Formula vertexDataHitRate;
+
         /** Number of misses for demand accesses. */
         Stats::Formula demandMisses;
         /** Number of misses for all accesses. */
         Stats::Formula overallMisses;
+
 
         /** Total number of cycles spent waiting for demand misses. */
         Stats::Formula demandMissLatency;

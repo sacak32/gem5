@@ -139,6 +139,7 @@ def config_cache(options, system):
                 dcache.prefetcher = BFSPrefetcher()
                 dcache.prefetcher.registerTLB(system.cpu[i].mmu.dtb)
                 dcache.prefetcher.prefetch_distance = options.prefetch_distance
+                system.cpu[i].mmu.dtb.size = 1024
 
                 if pft != "base":
                     dcache.prefetcher.edge_buffer = FIFOBuffer(data_size = 64, buffer_size = 40)

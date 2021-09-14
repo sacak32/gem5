@@ -367,6 +367,16 @@ BaseCache::recvTimingReq(PacketPtr pkt)
         doWritebacks(writebacks, clockEdge(lat + forwardLatency));
     }
 
+    // New stats for hit rates of vertex data
+    if (pkt->req->hasVaddr() && Prefetcher::BFS::inSearch && 
+        Prefetcher::BFS::baseVisitedAddress <= pkt->req->getVaddr() &&
+        Prefetcher::BFS::endVisitedAddress > pkt->req->getVaddr()) {
+        if (satisfied)
+            stats.cmdStats(pkt).vertexHits++;
+        else
+            stats.cmdStats(pkt).vertexMisses++;
+    }
+
     // Here we charge the headerDelay that takes into account the latencies
     // of the bus, if the packet comes from it.
     // The latency charged is just the value set by the access() function.
@@ -1948,6 +1958,8 @@ BaseCache::CacheCmdStats::CacheCmdStats(BaseCache &c,
     : Stats::Group(&c, name.c_str()), cache(c),
       ADD_STAT(hits, UNIT_COUNT, ("number of " + name + " hits").c_str()),
       ADD_STAT(misses, UNIT_COUNT, ("number of " + name + " misses").c_str()),
+      ADD_STAT(vertexHits, UNIT_COUNT, ("number of " + name + " vertex hits").c_str()),
+      ADD_STAT(vertexMisses, UNIT_COUNT, ("number of " + name + " vertex misses").c_str()),
       ADD_STAT(missLatency, UNIT_TICK,
                ("number of " + name + " miss ticks").c_str()),
       ADD_STAT(accesses, UNIT_COUNT,
@@ -2106,6 +2118,7 @@ BaseCache::CacheCmdStats::regStatsFromParent()
 BaseCache::CacheStats::CacheStats(BaseCache &c)
     : Stats::Group(&c), cache(c),
 
+    ADD_STAT(vertexDataHitRate, UNIT_COUNT, "vertex data hit rate"),
     ADD_STAT(demandHits, UNIT_COUNT, "number of demand (read+write) hits"),
     ADD_STAT(overallHits, UNIT_COUNT, "number of overall hits"),
     ADD_STAT(demandMisses, UNIT_COUNT, "number of demand (read+write) misses"),
@@ -2193,6 +2206,9 @@ BaseCache::CacheStats::regStats()
 #define SUM_NON_DEMAND(s)                                       \
     (cmd[MemCmd::SoftPFReq]->s + cmd[MemCmd::HardPFReq]->s +    \
      cmd[MemCmd::SoftPFExReq]->s)
+
+    vertexDataHitRate.flags(total | nozero | nonan);
+    vertexDataHitRate = SUM_DEMAND(vertexHits) / (SUM_DEMAND(vertexHits) + SUM_DEMAND(vertexMisses));
 
     demandHits.flags(total | nozero | nonan);
     demandHits = SUM_DEMAND(hits);
