@@ -1,0 +1,5 @@
+#!/bin/sh
+cd /root
+./pr -f inputs/16_10.el -n 1 
+echo "Done tbf"
+/sbin/m5 exit

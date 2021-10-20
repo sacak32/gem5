@@ -1,0 +1,5 @@
+#!/bin/sh
+cd /root
+./bfs -s 16 -e 10
+echo "Done tbf"
+/sbin/m5 exit

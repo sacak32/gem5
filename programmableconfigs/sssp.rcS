@@ -1,0 +1,5 @@
+#!/bin/sh
+cd /root
+./sssp -f inputs/large.el -n 1 
+echo "Done tbf"
+/sbin/m5 exit
