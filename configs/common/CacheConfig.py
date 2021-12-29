@@ -134,16 +134,23 @@ def config_cache(options, system):
             dcache = dcache_class(**_get_cache_opts('l1d', options))
 
             # Prefetcher config
+            dcache.mshrs = options.l1d_mshrs
+            dcache.tag_latency = options.l1d_latency / 2
+            dcache.data_latency = options.l1d_latency
+            dcache.response_latency = options.l1d_latency / 2
+            system.l2.tag_latency = options.l2_latency / 2
+            system.l2.data_latency = options.l2_latency            
+            system.l2.response_latency = options.l2_latency / 2
+
             pft = options.prefetch_type
             if pft and pft != "none": 
                 dcache.prefetcher = BFSPrefetcher()
                 dcache.prefetcher.registerTLB(system.cpu[i].mmu.dtb)
                 dcache.prefetcher.prefetch_distance = options.prefetch_distance
-                system.cpu[i].mmu.dtb.size = 1024
 
                 if pft != "base":
-                    dcache.prefetcher.edge_buffer = FIFOBuffer(data_size = 64, buffer_size = 40)
-                    dcache.prefetcher.visited_buffer = FIFOBuffer(data_size = 8, buffer_size = 320)
+                    dcache.prefetcher.edge_buffer = FIFOBuffer(data_size = 64, buffer_size = (options.prefetch_distance + 20) / 8)
+                    dcache.prefetcher.visited_buffer = FIFOBuffer(data_size = 8, buffer_size = options.prefetch_distance + 20)
 
                     if pft == "noalloc":
                         dcache.not_allocate_prefetch = True

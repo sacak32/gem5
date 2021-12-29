@@ -167,8 +167,8 @@ class BFSPrefetcher(QueuedPrefetcher):
     use_virtual_addresses = True
     feedback_loop = True
     on_write = False
-    queue_size = 200
-    max_prefetch_requests_with_pending_translation = 200
+    queue_size = 300
+    max_prefetch_requests_with_pending_translation = 300
     prefetch_distance = Param.Unsigned(64, "Prefetch distance")
     visited_buffer = Param.FIFOBuffer(NULL, "FIFO buffer of the prefetcher")
     edge_buffer = Param.FIFOBuffer(NULL, "FIFO buffer of the prefetcher")

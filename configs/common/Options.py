@@ -128,8 +128,11 @@ def addNoISAOptions(parser):
     parser.add_option("--num-l2caches", type="int", default=1)
     parser.add_option("--num-l3caches", type="int", default=1)
     parser.add_option("--l1d_size", type="string", default="32kB")
+    parser.add_option("--l1d_mshrs", type="int", default=12)
+    parser.add_option("--l1d_latency", type="int", default=2)
     parser.add_option("--l1i_size", type="string", default="32kB")
     parser.add_option("--l2_size", type="string", default="8MB")
+    parser.add_option("--l2_latency", type="int", default=40)
     parser.add_option("--l3_size", type="string", default="16MB")
     parser.add_option("--l1d_assoc", type="int", default=2)
     parser.add_option("--l1i_assoc", type="int", default=2)
@@ -217,7 +220,7 @@ def addCommonOptions(parser):
                       the selected cache)""")
     parser.add_option("--prefetch-type", type="choice", default=None,
                       choices=["none", "base", "alloc", "noalloc"])
-    parser.add_option("--prefetch-distance", type="int", default=64)
+    parser.add_option("--prefetch-distance", type="int", default=128)
     parser.add_option("--checker", action="store_true");
     parser.add_option("--cpu-clock", action="store", type="string",
                       default='2GHz',

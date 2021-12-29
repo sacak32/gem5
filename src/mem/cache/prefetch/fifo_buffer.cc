@@ -41,8 +41,10 @@ FIFOBuffer::FIFOBuffer(const FIFOBufferParams &p) :
 bool 
 FIFOBuffer::enqueue(Addr tag)
 {
-    if (pfb.size() == bufferSize) 
-        panic("Buffer full.\n");
+    if (pfb.size() == bufferSize) {
+        DPRINTF(FIFOBuffer, "Buffer full.\n");
+        return false;
+    }
 
     BufferEntry be(tag, BufferEntry::ASSIGNED);
     pfb.emplace_back(be);
@@ -111,7 +113,7 @@ bool
 FIFOBuffer::dequeue(Addr &tag, uint8_t* &data)
 {
     if (pfb.empty()) {
-        DPRINTF(FIFOBuffer, "Request addr: %#x failed, buffer empty.\n", tag);
+        DPRINTF(FIFOBuffer, "Buffer empty.\n");
         return false;
     }
 
@@ -119,7 +121,7 @@ FIFOBuffer::dequeue(Addr &tag, uint8_t* &data)
     if (be->state != BufferEntry::VALID) {
         statsFIFO.dequeueOutstanding++;
         DPRINTF(FIFOBuffer, "Request addr: %#x is still being fetched.\n",
-            tag);
+            be->tag);
         return false;
     } 
     

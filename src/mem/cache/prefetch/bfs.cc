@@ -162,12 +162,16 @@ void BFS::calculatePrefetch(const PrefetchInfo &pfi,
             curEdgeEnd = baseEdgeAddress + edgeDataSize * curEdgeEnd;
         }
         
-        // lets not prefetch first 2 vertexes
-        // curEdgeStart += 2*edgeDataSize;
-
         if (curEdgeStart >= curEdgeEnd)
             return;
-        
+       
+        // A normal prefetcher doesn't know the value of curEdgeEnd
+        // So it prefetches some extra vertexes after curEdgeEnd
+        int extraPrefetches = curEdgeEnd - curEdgeStart < prefetchDistance * edgeDataSize ?
+                              curEdgeEnd - curEdgeStart : prefetchDistance * edgeDataSize;
+        curEdgeEnd += extraPrefetches;
+        curEdgeEnd = (curEdgeEnd < endEdgeAddress) ? curEdgeEnd : endEdgeAddress;
+
         /* Now, we prefetch the whole blocks, from beginning of the edge array
            until the prefetch distance, if the array ends, we stop. */
         int i = curEdgeStart == blockAddress(curEdgeStart) ? 1 : 0;
